@@ -1,0 +1,980 @@
+# EcO Smart Ledger — Post-Implementation Refinement & Bug-Fix Master Prompt
+
+## ROLE
+
+Act as a Principal Software Engineer, Senior Product Architect, Fintech UX Engineer, and QA Lead. You are continuing development of an existing EcO Smart Ledger application that has already been generated through five implementation phases in Google AI Studio.
+
+The current implementation is impressive and must be treated as the starting point. Your task is to **audit, refine, repair, and complete the existing application**, not replace it with an unrelated design or regenerate the entire project from scratch.
+
+Work directly with the existing project files and actual implementation. Do not assume that a feature is missing merely because its interface is not visible. Inspect its components, event handlers, data model, Firestore operations, and navigation before deciding what to change.
+
+---
+
+# 1. NON-NEGOTIABLE DEVELOPMENT RULES
+
+Before editing anything:
+
+1. Inspect all relevant existing HTML, CSS, JavaScript, shared components, Firebase initialization code, routing/navigation logic, financial calculation functions, and existing tests.
+2. Determine which requested features are:
+   - Fully implemented and working.
+   - Partially implemented.
+   - Present only as a UI mockup.
+   - Missing entirely.
+   - Implemented but incorrect or insecure.
+3. Produce a concise audit table with the feature, current implementation status, evidence in the code, and the required action.
+4. Preserve existing functionality that already works.
+5. Reuse the existing design system, shared components, financial calculations, Firebase initialization, and established naming conventions wherever possible.
+6. Do not create duplicate components, collections, event listeners, financial formulas, or competing state-management systems.
+7. Do not remove existing data, change the backup format, or perform destructive migrations.
+8. Do not invent Firebase credentials, deploy Firestore rules, create indexes in the Firebase Console, or claim to have configured Firebase security. I will manage Firebase credentials, rules, indexes, and security settings manually.
+9. If a feature requires a trusted backend or a scheduled job, explain that dependency and implement only what the existing architecture safely supports.
+10. Do not stop after producing a plan. After the audit, implement the changes, test them, and report what was actually completed.
+
+If the entire codebase is not available in the current working context, request the missing files rather than inventing their implementation.
+
+## Required implementation workflow
+
+**Phase A — Audit:** Inspect the existing code and identify the actual state of every requested feature.
+
+**Phase B — Shared foundations:** Fix reusable components, shared navigation, date utilities, financial calculations, and state handling before editing individual pages.
+
+**Phase C — Dashboard:** Implement the mature lending/debt milestone system and the improved empty state.
+
+**Phase D — Connections:** Verify and complete the two-user EcO connection and transaction-sharing workflows.
+
+**Phase E — Statistics:** Complete the six-section statistics experience with coherent data, correct calculations, and a clean visual hierarchy.
+
+**Phase F — Feedback:** Make “অ্যাপ রে গালাবো” consistent, accessible, reliable, and available across all authenticated pages.
+
+**Phase G — QA:** Test financial correctness, edge cases, mobile layouts, existing functionality, and error states.
+
+Complete these phases incrementally. Keep the project in a runnable state, and do not replace working pages with placeholders while implementing other pages.
+
+---
+
+# 2. DASHBOARD — MATURE LENDING AND DEBT MILESTONES
+
+## 2.1 Objective
+
+The dashboard should help users understand which personal loans need attention without showing every outstanding transaction all the time.
+
+Use the original transaction dates to determine when an outstanding loan reaches a meaningful age milestone. Only display a reminder when an outstanding balance reaches a configured milestone.
+
+Do not show the same loan reminder on every dashboard visit indefinitely without a clear reason.
+
+## 2.2 Milestone schedule
+
+Support these default milestone ages:
+
+- 7 days
+- 15 days
+- 1 month
+- 2 months
+- 6 months
+- 1 year
+
+Use calendar-month and calendar-year arithmetic for monthly and yearly milestones rather than approximating every month as 30 days.
+
+Calculate the age from the original lending or borrowing date in the Asia/Dhaka timezone. Document and consistently apply the chosen date-boundary rules.
+
+Examples:
+
+- A loan recorded on 1 October reaches its 7-day milestone on 8 October.
+- A loan reaches its 1-month milestone on the corresponding calendar date of the following month.
+- If a target month lacks the original day number, use the final valid day of that month.
+
+These milestones are defaults, not hardcoded assumptions throughout the application. Keep the configuration centralized so it can be adjusted later.
+
+## 2.3 Which records qualify?
+
+Only outstanding balances should generate milestone reminders.
+
+For money lent to another person:
+
+- The user gave money.
+- The other person has not fully returned it.
+- The remaining receivable is greater than zero.
+
+For money borrowed from another person:
+
+- The user received borrowed money.
+- The user has not fully repaid it.
+- The remaining payable is greater than zero.
+
+Do not show reminders for fully settled records, deleted records, or zero balances.
+
+Where a person has multiple give/take transactions, use the actual existing ledger calculation to determine the outstanding balance. Do not calculate the debt using only the latest transaction.
+
+If the existing data model supports partial repayments, correctly reduce the outstanding principal according to its established semantics.
+
+## 2.4 Dashboard presentation
+
+Create a compact, clean section such as **“Lending & Debt Reminders”**.
+
+Normal view should contain only essential information:
+
+- Person's name.
+- Whether the user is waiting to receive money or needs to repay money.
+- Outstanding amount.
+- Age or milestone reached.
+- Original transaction date.
+- A clear action when relevant.
+
+Example:
+
+**Emon**
+- They owe you: ৳500.00
+- Lent 15 days ago
+- Recorded: 8 October
+- Action: `Remind on WhatsApp`
+
+Example for borrowing:
+
+**Rahim**
+- You owe: ৳800.00
+- Borrowed 1 month ago
+- Recorded: 23 September
+
+Use a concise, neutral presentation. Do not make the user feel guilty or portray the other person negatively.
+
+Do not add unnecessary statistics, descriptions, multiple badges, or explanatory paragraphs to every card.
+
+A small details action may reveal the full transaction history, repayment history, and milestone dates.
+
+## 2.5 Reminder frequency and duplicate prevention
+
+A loan can reach multiple milestones over time, so implement reminders carefully.
+
+Requirements:
+
+1. Track which milestone is currently due.
+2. Avoid rendering the same milestone repeatedly as though it were new.
+3. Allow a later milestone to become eligible when the loan reaches it.
+4. Do not treat opening or displaying a reminder as proof that a WhatsApp message was sent.
+5. Where persistent reminder state is needed, use an appropriate existing data structure or a backward-compatible extension.
+6. If the user dismisses a reminder, do not silently erase the underlying financial record.
+7. Do not create excessive Firestore writes on every dashboard render.
+
+Distinguish between:
+- Milestone eligibility.
+- Reminder visibility.
+- WhatsApp link opening.
+- Actual repayment or settlement.
+
+These are different events.
+
+## 2.6 WhatsApp quick-send
+
+For outstanding receivables, provide a `Remind on WhatsApp` action.
+
+Reuse the application's current WhatsApp sending mechanism. Do not introduce a new messaging provider or pretend the application can send a WhatsApp message directly if it currently opens WhatsApp with a prefilled message.
+
+The message should clearly sound like a polite reminder generated through EcO.
+
+Example Bangla message:
+
+আসসালামু আলাইকুম Emon,
+
+EcO Smart Ledger থেকে একটি বন্ধুত্বপূর্ণ রিমাইন্ডার জানানো হচ্ছে।
+
+আপনার কাছে আমার পাওনা ৳৫০০.০০, যা ১৫ দিন আগে, ৮ অক্টোবর ২০২৬ তারিখে লেনদেন হিসেবে রেকর্ড করা হয়েছিল।
+
+সুযোগমতো বিষয়টি দেখে জানাবেন। কোনো ভুল থাকলে বা ইতোমধ্যে পরিশোধ করে থাকলে আমাকে জানাতে পারেন।
+
+ধন্যবাদ।
+
+— EcO Smart Ledger
+
+This is an illustrative template. Generate the actual message dynamically using the real person's name, outstanding amount, elapsed milestone, and recorded date.
+
+Important:
+
+- Never invent names, amounts, dates, or repayment statuses.
+- Format money consistently with the application's BDT conventions.
+- Handle Bangla and English names safely.
+- URL-encode the entire message correctly.
+- Do not expose private information in a public URL or notification.
+- Use a polite, non-threatening tone.
+- Do not automatically send a message without the user's action.
+- Do not send a repayment reminder for money that the user owes someone else.
+
+For the user's own payables, show the reminder and outstanding information without offering a message that incorrectly suggests the other person owes the user. If a contact action is useful, make it a separate, neutral contact action.
+
+## 2.7 All-settled dashboard state
+
+When no outstanding receivables or payables qualify for milestone reminders, display a small, friendly empty state.
+
+Suggested Bangla copy:
+
+**সব হিসাব চুকেবুকে! 🎉**
+
+এই মুহূর্তে কোনো বকেয়া পাওনা বা দেনা নেই। এভাবেই চলুক! ✨
+
+Use a cheerful but restrained illustration or emoji. Keep it compact and consistent with the EcO design system.
+
+Important distinction:
+
+- If there are no outstanding loans at all, show the all-settled state.
+- If outstanding loans exist but none has reached a milestone, show a neutral message such as “এখনও কোনো রিমাইন্ডারের সময় হয়নি”.
+- Do not claim that everything is settled merely because no reminder is currently due.
+
+---
+
+# 3. ECO-TO-ECO CONNECTIONS — AUDIT AND COMPLETE THE FEATURE
+
+## 3.1 First determine whether it already exists
+
+I am uncertain whether the existing five-phase implementation has fully implemented user-to-user EcO connections.
+
+Do not immediately rebuild it.
+
+Inspect the actual implementation for:
+
+- Connection discovery or invitation.
+- Sending a connection request.
+- Receiving and approving/rejecting a request.
+- Connection status and relationship records.
+- Finding the intended user safely.
+- Creating shared transaction proposals.
+- Recipient approval or rejection.
+- Updating the relevant financial records after approval.
+- Notifications.
+- Duplicate request handling.
+- Security boundaries between users.
+- Cancellation and disconnection.
+- UI navigation and empty states.
+
+Report what is genuinely functional and what is only a visual placeholder.
+
+## 3.2 Intended user experience
+
+The purpose is to make entering transactions between two EcO users easier and less error-prone.
+
+A connection workflow should support:
+
+1. User A finds or invites User B using the existing approved discovery method.
+2. User A sends a connection request.
+3. User B can approve or reject it.
+4. Once connected, both users can see the appropriate connection status.
+5. When User A records a transaction involving User B, the application can optionally propose the corresponding transaction to User B.
+6. User B reviews the proposal and explicitly accepts or rejects it.
+7. The system prevents duplicate proposals and duplicate financial postings.
+8. Each user's private financial information remains private unless explicitly shared.
+
+Do not assume that two users can be safely connected merely because they know each other's names or phone numbers. Follow the existing account-discovery design and avoid exposing arbitrary user account data.
+
+## 3.3 Transaction proposal behavior
+
+Keep personal financial records separate from proposals until the required approval has happened.
+
+A proposal should include only the minimum information necessary, such as:
+
+- Sender and intended recipient.
+- Amount.
+- Give/take direction.
+- Relevant transaction date.
+- Optional note.
+- Status.
+- Created and updated timestamps.
+- Stable identifier for duplicate prevention.
+
+Define clearly how Give and Take directions are interpreted from each user's perspective.
+
+For example, if User A lends ৳500 to User B, the resulting ledgers must agree that:
+
+- User A expects to receive ৳500.
+- User B owes ৳500.
+
+Do not reverse this relationship accidentally.
+
+If the recipient rejects the proposal, it must not silently create a completed financial transaction in that recipient's ledger.
+
+If the existing implementation has different semantics, audit and explain them before making backward-incompatible changes.
+
+## 3.4 Firebase and security boundaries
+
+I will configure Firebase credentials, Firestore rules, indexes, and other Firebase security settings manually.
+
+Your responsibilities are to:
+
+- Implement the frontend and application-level workflows.
+- Identify the required Firestore documents and queries.
+- Document the required rules and indexes for my manual configuration.
+- Use stable IDs and idempotent operations where appropriate.
+- Never treat hidden UI controls as authorization.
+- Never trust a client-supplied user ID without verifying the authenticated user's authority.
+- Avoid allowing a user to modify another user's private financial records directly.
+- Prevent unauthorized access to connection requests and transaction proposals.
+
+If accepting a proposal requires atomic cross-user updates, explain why browser-only writes are insufficient for the required security or consistency guarantees. Use the existing trusted backend if available; otherwise, document the backend function that must be deployed later.
+
+Do not claim that cross-user security is production-ready merely because the interface works.
+
+## 3.5 Navigation and discoverability
+
+Ensure the user can discover and manage connections from an appropriate existing page, preferably the People/Ledger area if consistent with the current architecture.
+
+Include clear states for:
+
+- No connections.
+- Requests waiting for approval.
+- Connected users.
+- Pending proposals.
+- Rejected proposals.
+- Failed operations.
+- Loading and offline conditions.
+
+Use the existing compact, minimal UI. Put detailed proposal information behind a details action rather than filling every card with metadata.
+
+---
+
+# 4. STATISTICS PAGE — COMPLETE THE SIX-SECTION EXPERIENCE
+
+## 4.1 Objective
+
+The Statistics page must provide a coherent, useful financial analysis experience without looking crowded or disorganized.
+
+Use the existing six-section structure:
+
+1. Overview
+2. Categories
+3. Trend
+4. Heatmap
+5. Budget
+6. Insights
+
+Inspect the existing Statistics implementation before changing it. Preserve any working calculations and charts. Complete missing features, fix incorrect calculations, and reorganize the interface where necessary.
+
+## 4.2 Global navigation and date selection
+
+Provide:
+
+- A month selector with previous/next controls.
+- A dropdown covering the most recent 24 months, including the current month.
+- Six clearly labeled section tabs on desktop.
+- A compact dropdown or equivalent accessible selector on mobile.
+- Consistent chart colors for the active theme.
+- Responsive desktop and mobile layouts.
+- A visible loading, empty, and error state for each section as appropriate.
+
+Respect the existing application's theme system. Do not impose a dark-only theme if the current EcO implementation already supports both dark and light modes.
+
+Changing the selected month must update every relevant metric, chart, ranking, and insight consistently.
+
+Clearly distinguish between:
+- Month-specific data.
+- Rolling-period data.
+- Historical comparisons.
+- Current budget status.
+
+Use Asia/Dhaka consistently for date grouping.
+
+## 4.3 Overview section
+
+### Six KPI cards
+
+1. Total Spent, including percentage change versus the previous month.
+2. Daily Average.
+3. Highest Spending Day.
+4. Number of Transactions, including average spending per transaction.
+5. Cash Spent.
+6. bKash Spent.
+
+The bKash KPI is a compatibility requirement for the historical payment-method view. It must not assume that bKash is a permanent or mandatory payment method.
+
+If a user has no bKash payment method or has no bKash spending in the selected period, display an appropriate zero, empty, or unavailable state according to the metric's meaning.
+
+### Charts and summaries
+
+- Doughnut chart: Spending by Payment Method.
+- Compact payment-method legend showing each method's amount and percentage.
+- Bar chart: Earnings versus Spending versus Net.
+- Summary row showing Earnings, Spent, and Net.
+
+Use the user's actual configured payment methods. Do not hardcode Cash, bKash, and Nagad as the only available methods.
+
+Keep the six KPI cards visually compact and consistent. Avoid placing redundant numbers and explanatory paragraphs inside every card.
+
+## 4.4 Categories section
+
+Include:
+
+- Doughnut chart: Category Breakdown.
+- Clear category legend.
+- Ranked list of the top 10 spending categories.
+- Rank, category name, mini progress bar, percentage of spending, and amount.
+
+Sort the ranking by actual spending, not alphabetically.
+
+If fewer than 10 categories have data, show only the relevant categories. If no spending exists, show a helpful empty state.
+
+Category colors should be readable and consistent. Avoid using so many highly saturated colors that the chart becomes visually noisy.
+
+## 4.5 Trend section
+
+Include:
+
+- Bar chart: Daily Spending for each day of the selected month.
+- Filled line chart: Six-month spending comparison.
+- Bar chart: Spending by expense type:
+  - Regular
+  - Fixed
+  - Emergency
+  - Recurring
+
+Do not infer an expense type from a category name if the existing schema stores expense types separately.
+
+If an expense type is unavailable in older records, handle it explicitly without silently assigning incorrect classifications.
+
+Ensure the daily chart distinguishes a genuine zero-spending day from a missing or unavailable data point.
+
+## 4.6 Heatmap section
+
+Include a calendar heatmap with:
+
+- Seven columns, Sunday through Saturday.
+- Correct calendar alignment.
+- Six spending-intensity levels, including zero spending.
+- Highlighted current date when relevant.
+- Hover tooltip on desktop.
+- Accessible tap/focus details on mobile and keyboard navigation where practical.
+- A clear Less → More legend.
+- A ranked list of the seven most expensive days, with mini bars.
+
+The heatmap must use the selected month's actual calendar. Do not fill dates from adjacent months with misleading spending values.
+
+Tooltips should show the date and actual spending amount. They must remain usable on touchscreens.
+
+## 4.7 Budget section
+
+### Four KPI cards
+
+- Monthly Budget.
+- Spent So Far.
+- Remaining.
+- Today's Budget.
+
+### Main budget progress
+
+Include a progress bar representing the appropriate spending percentage.
+
+Use the existing budget calculation semantics. The color can move through restrained green, orange, and red states as the user approaches or exceeds the configured budget.
+
+If spending exceeds the budget, show a clear over-budget state. Do not rely only on color or animation to communicate the situation.
+
+### Budget breakdown
+
+Include compact progress rows for:
+
+- Income.
+- Fixed expenses.
+- Savings.
+- Emergency allocation.
+- Spending.
+
+Use the actual existing budget model and avoid treating income as if it were necessarily a spending allowance.
+
+### Daily budget versus actual
+
+Include a combination chart for the last 14 days:
+
+- Bars: actual daily spending.
+- Comparison line: daily budget.
+- Bars exceeding the daily limit highlighted in pink or an accessible semantic warning color.
+
+### Additional behavior
+
+- Show a setup prompt when no usable budget is configured.
+- Include a refresh action that actually refreshes or recomputes the data.
+- Show loading and error states.
+- Avoid unnecessary full-page reloads.
+
+## 4.8 Insights section
+
+Generate useful insights from actual data, where available:
+
+- Spending increased or decreased versus the previous month.
+- The user is ahead of or behind the budget pace.
+- The largest spending category.
+- The most expensive day.
+- Emergency spending.
+- Mobile-wallet usage.
+- No-spend days.
+
+Include a radar chart showing average spending by day of the week.
+
+Each insight should have:
+
+- A small icon.
+- A short title.
+- One concise explanatory sentence.
+- An optional details action when deeper information is useful.
+
+Do not fabricate insights, percentages, comparisons, or causal explanations.
+
+If there is insufficient historical data, explicitly say that more data is needed rather than inventing a trend.
+
+## 4.9 Chart technology
+
+The current design specification references Chart.js 3.9.1 and Font Awesome 6.4.
+
+Inspect the existing application first:
+
+- If Chart.js is already integrated, reuse it.
+- Do not load multiple copies of Chart.js.
+- Reuse the existing icon library if it is already established.
+- Do not introduce unnecessary dependencies just to redraw an existing chart.
+- If a required chart type is unsupported by the existing chart configuration, implement it consistently with the established technology.
+
+Ensure chart instances are properly updated or destroyed when changing months, switching themes, or navigating between sections. Prevent duplicate canvases, stale chart data, and memory leaks.
+
+## 4.10 Statistics layout and density
+
+The requested analytical content is substantial, but it must not be displayed all at once in a giant dashboard.
+
+Follow these principles:
+
+- One active statistics section at a time.
+- A clear heading and concise context.
+- KPIs first, main visualization second, supporting details afterward.
+- Use a responsive grid with consistent gaps.
+- Keep legends close to their corresponding charts.
+- Move detailed breakdowns into collapsible sections or secondary views when appropriate.
+- On mobile, stack charts vertically and avoid tiny labels.
+- Allow horizontal scrolling only for compact controls that genuinely need it.
+- Keep exact figures available without filling the screen with redundant descriptions.
+- Give complex charts an optional details or explanation action.
+
+The result should be information-rich but visually calm, with clear hierarchy and minimal clutter.
+
+---
+
+# 5. “অ্যাপ রে গালাবো” — REPAIR AND STANDARDIZE THE FEEDBACK FEATURE
+
+## 5.1 Purpose and placement
+
+“অ্যাপ রে গালাবো” is EcO's friendly feedback, complaint, suggestion, and bug-report channel.
+
+It must be available to authenticated users on every main application page:
+
+- Dashboard/Home.
+- Expenses/List.
+- Statistics.
+- Wallets.
+- Transactions/People.
+- Settings.
+
+### Desktop
+
+Place the action in the left sidebar, below Settings and separated from the main navigation by a thin divider.
+
+### Mobile and tablet
+
+Place it in the slide-out menu, below Settings and after a divider.
+
+The action must not appear to logged-out visitors.
+
+If navigation is generated by a shared component, implement this feature in the shared navigation rather than duplicating inconsistent markup across pages.
+
+## 5.2 Visual and language consistency
+
+- Use a real icon from the application's existing icon library, such as a speech bubble, bug, or feedback icon.
+- Remove the current placeholder symbol.
+- Match the size, alignment, spacing, and hover/focus states of other navigation items.
+- Use correct Bangla rendering and consistent spelling: “অ্যাপ রে গালাবো”.
+- Ensure the visible label and accessible name are consistent.
+- Respect the current dark/light theme.
+- Keep the component visually consistent across desktop, mobile, and tablet.
+
+## 5.3 Popup behavior
+
+Clicking the menu item opens a centered modal on desktop and a bottom sheet on small mobile screens.
+
+Requirements:
+
+1. Close the mobile navigation drawer before opening the feedback interface.
+2. Dim the background.
+3. Use the existing design system and shared modal components where possible.
+4. Focus the first appropriate input when opened.
+5. Close using the close button, Cancel, backdrop click, or Escape.
+6. If the user has entered text, ask for confirmation before discarding the draft.
+7. Restore the draft if the user closes and reopens the modal without discarding it.
+8. Prevent the modal from appearing underneath or being obscured by other overlays.
+9. Ensure keyboard accessibility and readable mobile spacing.
+
+## 5.4 Form fields
+
+### Message type
+
+Provide selectable options:
+
+- Bug or problem.
+- Idea or suggestion.
+- Complaint.
+- Something else.
+
+### Message
+
+A required text area with:
+
+- Minimum length of 10 meaningful characters after trimming whitespace.
+- Maximum length of 2,000 characters.
+- Live character counter.
+- Clear validation.
+- Preservation of entered text if submission fails.
+
+Do not count a string of spaces as a valid message.
+
+### App section
+
+Optional dropdown:
+
+- Home.
+- Expenses.
+- Stats.
+- Wallet.
+- Transactions.
+- Settings.
+- Other.
+
+Preselect the page from which the modal was opened.
+
+### Contact permission
+
+Optional checkbox:
+
+“You can contact me about this.”
+
+Use the authenticated user's available account email. Never ask the user to type their email again.
+
+### Screenshot
+
+Treat screenshot attachment as an optional enhancement.
+
+If the existing backend supports secure image storage, implement one image attachment with a reasonable size limit, validation, and client-side compression.
+
+If secure storage is not already configured, do not create a fake upload button. Clearly mark the capability as pending backend/storage setup and document the required configuration.
+
+## 5.5 Automatically collected context
+
+Where supported, attach the following information to a feedback report:
+
+- Current page.
+- Browser and device information.
+- Screen dimensions.
+- Active theme.
+- Application version.
+- Timestamp.
+
+Show a short disclosure in the modal, such as:
+
+“আমাদের সমস্যাটি বুঝতে সাহায্য করার জন্য পেজ ও ডিভাইসের কিছু সাধারণ তথ্য যুক্ত হবে।”
+
+Collect only what is necessary. Do not collect passwords, authentication tokens, financial balances, complete transaction histories, or other unrelated private information.
+
+Ensure the Privacy Policy documents the collection and purpose of this metadata.
+
+## 5.6 Submission behavior
+
+### Sending
+
+- Disable the submit button while a request is in progress.
+- Display a loading state.
+- Prevent double submission.
+- Preserve the message if submission fails.
+
+### Success
+
+Close the modal and show a toast:
+
+“ধন্যবাদ! আপনার মতামত আমরা পেয়েছি।”
+
+### Failure
+
+Keep the modal open, preserve the draft, explain that submission failed, and offer a retry.
+
+Do not show a success message unless the backend confirms successful persistence.
+
+### Offline
+
+If offline submission is supported by the existing architecture, save a pending report locally and retry when connectivity returns.
+
+Use an explicit pending/sent state and avoid duplicate reports when retries occur.
+
+If reliable offline delivery is not currently supported, show a clear offline message and preserve the draft. Do not claim that the report has been queued or sent when it has not.
+
+### Spam protection
+
+Implement reasonable client-side validation, but do not rely on it as the security boundary.
+
+Document the server-side rate limit and bot-protection requirements for my manual Firebase/backend configuration. Never trust a client-supplied sender identity.
+
+## 5.7 Data destination and report model
+
+Use the existing feedback/report collection if one exists. Do not create duplicate collections without first auditing the current schema.
+
+Each report should contain the relevant fields:
+
+- Report ID.
+- Authenticated sender ID.
+- Sender email if available and necessary.
+- Type.
+- Message.
+- Page.
+- Device context.
+- Timestamp.
+- Contact permission.
+- Status: New, Seen, or Fixed.
+- Optional attachment reference.
+
+Users must not be able to read other users' private reports.
+
+If the current application already has an `issueReports` collection, inspect its actual schema and reuse it if appropriate.
+
+Do not assume that an administrative inbox, email notification, or report-status management system exists merely because the data model can support it.
+
+If instant email/chat notifications or an admin panel require backend configuration, document those requirements separately rather than pretending they are operational.
+
+---
+
+# 6. PRESERVE PAYMENT-METHOD AND FINANCIAL CORRECTNESS
+
+The recent EcO product requirements remain binding during this refinement.
+
+## 6.1 Payment methods
+
+- Cash is the only payment method created by default.
+- All other payment methods are user-created, except when valid legacy backup data requires their automatic restoration.
+- Do not use brand-specific colors for bKash, Nagad, City Bank, or any other payment method.
+- All payment methods use the same restrained neutral visual treatment.
+- No phone number is required to create a payment method.
+- If duplicate method names exist, use a stable, unambiguous naming convention such as `bKash` and `bKash~2`.
+- Preserve existing method identities and historical transaction references.
+
+## 6.2 Legacy JSON import
+
+When importing an existing EcO backup:
+
+- Inspect the actual payment-method data and historical transaction references.
+- Restore bKash only when the imported data indicates that it exists or was used.
+- Restore Nagad only when the imported data indicates that it exists or was used.
+- If the data contains only bKash, do not automatically add Nagad.
+- If the data contains neither, do not add either.
+- Do not create phone-number fields or fabricate account details.
+- Avoid duplicate method creation during repeated imports.
+- Preserve historical transaction amounts, fees, dates, categories, and wallet references.
+
+The import must remain backward-compatible with the existing `eco-backup` version 1 contract.
+
+## 6.3 Existing financial calculations
+
+Do not change financial formulas casually while refining the UI.
+
+In particular, verify that:
+
+- Wallet balances remain correct.
+- Lending and borrowing are reflected in the correct direction.
+- Repayments reduce the outstanding amount correctly.
+- Transfers do not become income or expenses accidentally.
+- Cashout fees are handled according to the existing fee model.
+- Statistics use the same financial source of truth as the ledger.
+- Historical transactions do not change merely because the UI or payment-method configuration changes.
+
+Use shared calculation functions instead of maintaining different formulas in Dashboard, Wallets, and Statistics.
+
+---
+
+# 7. DESIGN SYSTEM — MINIMAL, CLEAR, INSTITUTIONAL EMERALD
+
+Follow the existing EcO Smart Ledger design system based on the supplied Stitch concepts.
+
+## 7.1 Visual identity
+
+- Dark-first, charcoal-based fintech interface.
+- Emerald accent: `#73e3b4`.
+- Primary button fill: `#55c79a`.
+- Error color: `#ffb4ab`.
+- Neutral transfer color: `#bec7d5`.
+- Background: `#111317`.
+- Primary card surface: `#1a1c20`.
+- Nested surface: `#1e2024`.
+- Hover/active surface: `#282a2e`.
+- Main text: `#e2e2e8`.
+- Secondary text: `#bccac1`.
+- Border: `#3d4943`.
+
+Preserve existing light-theme support if it is already implemented.
+
+## 7.2 Typography
+
+- Inter for headings, prose, labels, and UI copy.
+- JetBrains Mono for monetary values, IDs, and timestamps.
+- Use a suitable Bengali font already included in the project, such as Hind Siliguri, for Bangla copy.
+
+## 7.3 The critical minimal-UI rule
+
+**Show the minimum information necessary for a decision in the normal view.**
+
+Apply this rule across the entire application, including:
+
+- Dashboard.
+- Lending/debt reminders.
+- Wallets.
+- Transaction lists.
+- People/Ledger.
+- Connection requests.
+- Proposal review.
+- Statistics.
+- Feedback.
+- Settings.
+
+Normal cards should generally show a title, the essential amount or status, and one clear action.
+
+Place extensive explanations, IDs, notes, audit details, technical metadata, and secondary calculations behind a details action, expandable row, tooltip, or dedicated details view.
+
+Do not remove important information; progressively disclose it.
+
+Avoid:
+- Too many badges.
+- Multiple descriptions that repeat the same information.
+- Excessive nested cards.
+- Large explanatory text in every card.
+- Unnecessary icons or saturated colors.
+- Fake growth percentages or decorative data.
+- Crowded legends.
+- Oversized cards that waste screen space.
+
+## 7.4 Responsive behavior
+
+Preserve the application's established navigation architecture:
+
+- Desktop sidebar and top header.
+- Mobile header, slide-out menu, and bottom navigation.
+- Safe-area insets.
+- Touch-friendly actions.
+- Accessible focus states.
+- Proper loading, empty, success, and error states.
+
+Do not render desktop and mobile navigation simultaneously when only one is appropriate.
+
+---
+
+# 8. PERFORMANCE, ACCESSIBILITY, AND RELIABILITY
+
+Check the following during implementation:
+
+- Reuse existing shared scripts and components.
+- Avoid repeatedly loading entire Firestore collections when only a small date range is required.
+- Use pagination or bounded queries for large transaction histories.
+- Avoid unnecessary database writes when rendering dashboard reminders or statistics.
+- Avoid duplicate event listeners after page updates.
+- Dispose of obsolete chart instances.
+- Handle missing legacy fields safely.
+- Handle invalid dates and zero-denominator calculations.
+- Preserve financial data during failed operations.
+- Prevent double submission.
+- Show useful error messages instead of silently swallowing errors.
+- Use semantic controls, accessible labels, and keyboard-friendly interactions.
+- Never communicate status through color alone.
+- Keep text readable at mobile sizes.
+- Ensure buttons have real behavior; do not leave decorative or nonfunctional actions in the UI.
+
+Do not implement a fake “live sync” indicator. Reflect actual application state where feasible, or label the state honestly.
+
+---
+
+# 9. REQUIRED TESTS
+
+Create or update tests using the testing approach already present in the project. If there is no test framework, begin with lightweight repeatable tests without introducing an unnecessarily large dependency stack.
+
+## Dashboard milestone tests
+
+1. A loan younger than seven days does not show a milestone reminder.
+2. A loan reaching seven days becomes eligible.
+3. Fifteen-day and monthly milestones are calculated correctly.
+4. Calendar-month boundaries and leap years are handled correctly.
+5. A fully repaid loan never shows as outstanding.
+6. A partially repaid loan shows the correct remaining amount.
+7. A loan with no milestone currently due does not trigger the all-settled message if it remains outstanding.
+8. No outstanding loans shows the all-settled state.
+9. A receivable reminder opens a WhatsApp link with the correct encoded message.
+10. A payable reminder never generates a misleading “you owe me” message.
+11. Displaying a reminder does not itself mark the loan as repaid or the message as sent.
+
+## Connections tests
+
+1. A request can be sent through the intended workflow.
+2. Duplicate requests are prevented or handled deterministically.
+3. A recipient can accept or reject a request.
+4. Unapproved proposals do not become completed transactions.
+5. A proposal cannot be accepted twice to create duplicate financial records.
+6. Give/take direction remains consistent from both users' perspectives.
+7. A user cannot access another user's private ledger merely by changing a client-side ID.
+8. Missing backend functionality is documented instead of simulated as successful.
+
+## Statistics tests
+
+1. All metrics update when the selected month changes.
+2. Spending totals match the underlying expense records.
+3. Payment-method breakdowns match the selected period.
+4. Missing bKash/Nagad methods do not break charts or KPI cards.
+5. Category totals and percentages are consistent.
+6. Daily spending uses the correct local calendar dates.
+7. Six-month comparisons use consistent monthly boundaries.
+8. Budget calculations match the existing budget model.
+9. Zero spending and missing data are handled correctly.
+10. Switching themes or months does not create duplicate chart instances.
+
+## Feedback tests
+
+1. The action is visible on every authenticated main page.
+2. It is absent for logged-out visitors.
+3. The mobile drawer closes before the modal opens.
+4. The form rejects blank and too-short messages.
+5. The character limit is enforced.
+6. Failed submission preserves the draft.
+7. Repeated clicks do not create duplicate reports.
+8. The user receives success feedback only after confirmed persistence.
+9. Other users' reports cannot be read by an ordinary user.
+10. Keyboard navigation, Escape handling, and unsaved-draft confirmation work correctly.
+
+## Regression tests
+
+Retest existing expense entry, income, transfers, wallet balances, Give/Take, repayments, settings, backup export/import, and existing share functionality.
+
+Do not consider the work complete if these existing workflows break.
+
+---
+
+# 10. FINAL DELIVERABLES
+
+After implementing and testing the changes, provide:
+
+1. **Feature audit:** what was already complete, partially complete, missing, or broken.
+2. **Implementation summary:** each modified feature and how it works.
+3. **Files changed:** actual file paths and a brief description of each change.
+4. **Data-model changes:** any required new fields or collections, with backward-compatibility notes.
+5. **Firebase manual setup checklist:** exact rules, indexes, storage, and backend requirements that I must configure myself.
+6. **Test results:** which tests were run, which passed, which failed, and which could not be run.
+7. **Known limitations:** especially features that depend on backend functions, scheduled jobs, or manual Firebase configuration.
+8. **Remaining work:** a short prioritized list.
+
+Do not claim a test passed unless it was actually run.
+
+Do not claim a Firebase feature is production-ready if its required rules or backend are still missing.
+
+Do not finish by giving me another prompt to do the work. Implement the changes directly in the existing project wherever the available tools and code allow.
+
+## FINAL PRIORITY
+
+The priorities, in order, are:
+
+1. Preserve financial correctness and existing user data.
+2. Audit and complete the EcO-to-EcO connection workflow.
+3. Implement mature, date-based lending/debt reminders with correct WhatsApp messages.
+4. Complete and organize the six-section Statistics page.
+5. Standardize the “অ্যাপ রে গালাবো” feedback feature across all authenticated pages.
+6. Improve minimal UI, responsiveness, accessibility, and performance.
+7. Document all Firebase configuration that I must perform manually.
+
+Begin by inspecting the existing project and reporting the feature audit. Then proceed through implementation and verification without unnecessarily rewriting working code.

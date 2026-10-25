@@ -1,0 +1,919 @@
+import React, { useState, useMemo } from 'react';
+import {
+  Info,
+  ArrowRight,
+  TrendingUp,
+  TrendingDown,
+  ArrowRightLeft,
+  Users2,
+  Wallet,
+  Calendar,
+  X,
+  MessageCircle,
+  Clock,
+  CheckCircle2,
+  ChevronRight,
+  Copy,
+  Check,
+  PlusCircle,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Layers,
+  Sliders,
+  Sparkles,
+  AlertTriangle
+} from 'lucide-react';
+import {
+  FinancialSummary,
+  calculateBudgetMetrics,
+  BudgetMetrics
+} from '../domain/calculations';
+import {
+  UserSettings,
+  PaymentMethod,
+  UnifiedActivityItem,
+  PersonRecord,
+  PeerTransactionRecord,
+  ExpenseRecord,
+  RecurringExpenseRecord
+} from '../domain/types';
+import { FixedEmergencyDetailsModal } from '../components/FixedEmergencyDetailsModal';
+import { formatTaka } from '../domain/money';
+import { formatDisplayDate, getTodayDateString } from '../domain/dates';
+import {
+  computeDashboardLoanReminders,
+  LoanMilestoneReminderItem,
+  normalizeWhatsAppPhone
+} from '../domain/milestones';
+
+interface DashboardViewProps {
+  summary: FinancialSummary;
+  settings: UserSettings;
+  todayExpenses: number;
+  expenses?: ExpenseRecord[];
+  recurringExpenses?: RecurringExpenseRecord[];
+  recentActivities: UnifiedActivityItem[];
+  paymentMethods: PaymentMethod[];
+  people: PersonRecord[];
+  transactions: PeerTransactionRecord[];
+  dismissedMilestones?: Record<string, string[]>;
+  onDismissMilestone?: (personId: string, milestoneKey: string) => void;
+  onNavigateToList: () => void;
+  onNavigateToWallets: () => void;
+  onNavigateToPeople: () => void;
+  onNavigateToSettings?: () => void;
+  onOpenAddModal: () => void;
+  onOpenAddWithKind?: (kind: 'expense' | 'earning' | 'transfer' | 'give' | 'take') => void;
+}
+
+export const DashboardView: React.FC<DashboardViewProps> = ({
+  summary,
+  settings,
+  todayExpenses,
+  expenses = [],
+  recurringExpenses = [],
+  recentActivities,
+  paymentMethods,
+  people = [],
+  transactions = [],
+  dismissedMilestones = {},
+  onDismissMilestone,
+  onNavigateToList,
+  onNavigateToWallets,
+  onNavigateToPeople,
+  onNavigateToSettings,
+  onOpenAddModal,
+  onOpenAddWithKind
+}) => {
+  const [showFormulaModal, setShowFormulaModal] = useState(false);
+  const [showBudgetDetailsModal, setShowBudgetDetailsModal] = useState(false);
+  const [selectedReminderDetails, setSelectedReminderDetails] = useState<LoanMilestoneReminderItem | null>(null);
+
+  // WhatsApp quick-send modal for missing phone numbers
+  const [whatsAppModalItem, setWhatsAppModalItem] = useState<LoanMilestoneReminderItem | null>(null);
+  const [tempPhone, setTempPhone] = useState<string>('');
+  const [copiedText, setCopiedText] = useState<boolean>(false);
+
+  const todayDateStr = getTodayDateString();
+  const budgetMetrics = useMemo(() => {
+    return calculateBudgetMetrics(settings, expenses.length > 0 ? expenses : todayExpenses, recurringExpenses, todayDateStr);
+  }, [settings, expenses, todayExpenses, recurringExpenses, todayDateStr]);
+
+  // Mature Lending & Debt Milestones
+  const reminderData = useMemo(() => {
+    return computeDashboardLoanReminders(
+      people,
+      transactions,
+      summary.personBalances,
+      todayDateStr,
+      dismissedMilestones
+    );
+  }, [people, transactions, summary.personBalances, todayDateStr, dismissedMilestones]);
+
+  const handleLaunchWhatsApp = (item: LoanMilestoneReminderItem) => {
+    if (!item.whatsAppReminderText) return;
+
+    const normalized = normalizeWhatsAppPhone(item.phone || '');
+    if (normalized && normalized.length >= 8) {
+      const waUrl = `https://wa.me/${normalized}?text=${encodeURIComponent(item.whatsAppReminderText)}`;
+      const a = document.createElement('a');
+      a.href = waUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      setWhatsAppModalItem(item);
+      setTempPhone(normalized);
+      setCopiedText(false);
+    }
+  };
+
+  const handleSendCustomPhoneWhatsApp = () => {
+    if (!whatsAppModalItem || !whatsAppModalItem.whatsAppReminderText) return;
+    const normalized = normalizeWhatsAppPhone(tempPhone);
+    const waUrl = normalized
+      ? `https://wa.me/${normalized}?text=${encodeURIComponent(whatsAppModalItem.whatsAppReminderText)}`
+      : `https://wa.me/?text=${encodeURIComponent(whatsAppModalItem.whatsAppReminderText)}`;
+
+    const a = document.createElement('a');
+    a.href = waUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setWhatsAppModalItem(null);
+  };
+
+  const activeWallets = paymentMethods.filter((m) => m.isActive);
+
+  return (
+    <div className="space-y-6 pb-28 lg:pb-12 animate-in fade-in duration-150">
+      {/* =========================================================================
+          HERO FINANCIAL SUMMARY CARD
+         ========================================================================= */}
+      <section className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl p-5 sm:p-6 shadow-sm relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-[#BCCAC1]">
+                Net Financial Position
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFormulaModal(true)}
+                className="p-1 rounded text-[#87948C] hover:text-[#73E3B4] transition-colors cursor-pointer"
+                title="View Net Total vs. Liquid Wallets formula"
+                aria-label="View Net calculation details"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Primary Hero Net Total */}
+            <div className="text-3xl sm:text-4xl font-mono tabular-nums font-bold text-[#E2E2E8] mt-1 tracking-tight">
+              {formatTaka(summary.netTotal)}
+            </div>
+
+            {/* Liquid Wallets Secondary Row */}
+            <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-[#BCCAC1]">
+              <span>Liquid Wallets:</span>
+              <span className="font-mono tabular-nums text-[#73E3B4] font-semibold">
+                {formatTaka(summary.liquidWalletTotal)}
+              </span>
+              <span className="text-[#87948C]">·</span>
+              <button
+                type="button"
+                onClick={onNavigateToWallets}
+                className="btn-sm bg-[#0C0E12] hover:bg-[#1E2024] text-[#73E3B4] border border-[#3D4943]/40 cursor-pointer gap-1.5"
+                title="View active accounts"
+              >
+                <Wallet className="w-3 h-3" />
+                <span>{activeWallets.length} Accounts</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Action Button */}
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenAddModal}
+              className="btn-md bg-[#55C79A] hover:bg-[#73E3B4] active:scale-[0.98] text-[#003826] shadow-sm gap-2 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 stroke-[2.2]" />
+              <span>Record Entry</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          GRID: TODAY'S BUDGET & ACTIVE ACCOUNTS OVERVIEW
+         ========================================================================= */}
+      <div className={`grid gap-4 ${budgetMetrics.isActive ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Card 1: Today's Budget Hero Card (Hidden when budget mode is Off) */}
+        {budgetMetrics.isActive && (
+          <div className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden">
+            <div>
+              {/* Header: Title + Day X of Y + Mode */}
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#BCCAC1]">
+                    Today's Budget
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0C0E12] border border-[#3D4943]/40 text-[#73E3B4] font-mono">
+                    Day {budgetMetrics.dayOfMonth} of {budgetMetrics.daysInMonth}
+                  </span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-[#0C0E12] border border-[#3D4943]/30 text-[#87948C] font-mono capitalize">
+                  {budgetMetrics.mode}
+                </span>
+              </div>
+
+              {budgetMetrics.todayLimit <= 0 && budgetMetrics.spentToday <= 0 ? (
+                /* Fallback state when budget target is not configured */
+                <div className="py-7 text-center space-y-3">
+                  <p className="text-xs text-[#87948C]">
+                    Set up your monthly income and bills to enable your adaptive daily limit.
+                  </p>
+                  {onNavigateToSettings && (
+                    <button
+                      type="button"
+                      onClick={onNavigateToSettings}
+                      className="btn-sm bg-[#0C0E12] hover:bg-[#1E2024] text-[#73E3B4] border border-[#73E3B4]/40 mx-auto gap-1.5 cursor-pointer"
+                    >
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>Configure in Settings</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                /* Active Budget Hero Display */
+                <div className="mt-4 space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    {/* SVG Circular Progress Ring */}
+                    <div className="relative w-28 h-28 shrink-0 mx-auto sm:mx-0 flex items-center justify-center">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                        {/* Background track */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          className="stroke-[#0C0E12]"
+                          strokeWidth="8"
+                          fill="transparent"
+                        />
+                        {/* Progress ring */}
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          stroke={
+                            budgetMetrics.percentageUsed >= 100
+                              ? '#FFB4AB'
+                              : budgetMetrics.percentageUsed >= 75
+                              ? '#F59E0B'
+                              : '#55C79A'
+                          }
+                          strokeWidth="8"
+                          strokeDasharray={251.33}
+                          strokeDashoffset={251.33 - (Math.min(100, budgetMetrics.percentageUsed) / 100) * 251.33}
+                          strokeLinecap="round"
+                          fill="transparent"
+                          className="transition-all duration-500 ease-out"
+                        />
+                      </svg>
+                      {/* Inside Ring Text */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                        <span className="text-[9px] font-semibold uppercase tracking-wider text-[#87948C] leading-none mb-0.5">
+                          Left Today
+                        </span>
+                        <span
+                          className={`text-sm sm:text-base font-mono font-bold tracking-tight leading-tight ${
+                            budgetMetrics.isOverBudget ? 'text-[#FFB4AB]' : 'text-[#73E3B4]'
+                          }`}
+                        >
+                          {formatTaka(budgetMetrics.leftToday)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Side Stats */}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[#87948C]">Spent today:</span>
+                        <span className="font-mono font-semibold text-[#E2E2E8]">
+                          {formatTaka(budgetMetrics.spentToday)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[#87948C]">Daily limit:</span>
+                        <span className="font-mono font-semibold text-[#73E3B4]">
+                          {formatTaka(budgetMetrics.todayLimit)}
+                        </span>
+                      </div>
+
+                      {/* Horizontal progress bar */}
+                      <div className="w-full h-2 rounded-full bg-[#0C0E12] border border-[#3D4943]/30 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            budgetMetrics.percentageUsed >= 100
+                              ? 'bg-[#FFB4AB]'
+                              : budgetMetrics.percentageUsed >= 75
+                              ? 'bg-[#F59E0B]'
+                              : 'bg-[#55C79A]'
+                          }`}
+                          style={{ width: `${Math.min(100, budgetMetrics.percentageUsed)}%` }}
+                        />
+                      </div>
+
+                      {/* Footer remaining / over alert */}
+                      <div className="pt-0.5">
+                        {budgetMetrics.isOverBudget ? (
+                          <div className="text-xs font-semibold text-[#FFB4AB] flex items-center gap-1.5 animate-pulse">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{formatTaka(budgetMetrics.overAmount)} over budget!</span>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-[#73E3B4] font-medium">
+                            {formatTaka(budgetMetrics.leftToday)} remaining today
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons: Customize DB & Details */}
+            <div className="mt-4 pt-3 border-t border-[#3D4943]/20 flex items-center justify-between gap-2">
+              {onNavigateToSettings ? (
+                <button
+                  type="button"
+                  onClick={onNavigateToSettings}
+                  className="btn-sm bg-[#0C0E12] hover:bg-[#1E2024] text-[#BCCAC1] hover:text-[#E2E2E8] border border-[#3D4943]/40 gap-1.5 cursor-pointer text-xs"
+                  title="Configure Daily Budget and buffer settings"
+                >
+                  <Sliders className="w-3 h-3 text-[#73E3B4]" />
+                  <span>Customize DB</span>
+                </button>
+              ) : (
+                <div />
+              )}
+
+              {budgetMetrics.mode === 'calculated' && (
+                <button
+                  type="button"
+                  onClick={() => setShowBudgetDetailsModal(true)}
+                  className="btn-sm bg-[#1E2024] hover:bg-[#282A2E] text-[#73E3B4] border border-[#73E3B4]/40 gap-1.5 cursor-pointer text-xs font-medium"
+                  title="View Fixed & Emergency spending vs plan"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Details</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Card 2: Active Accounts & Liquidity Overview */}
+        <div className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl p-5 flex flex-col justify-between shadow-sm">
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[#BCCAC1]">
+                Active Accounts & Liquidity
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-[#0C0E12] border border-[#3D4943]/30 text-[#73E3B4] font-mono">
+                {activeWallets.length} Accounts Active
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {/* Total Liquid Funds in Wallets */}
+              <div className="p-3.5 rounded-xl bg-[#0C0E12] border border-[#3D4943]/40 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-medium text-[#BCCAC1]">
+                    Total Liquid Funds in Wallets
+                  </div>
+                  <div className="text-xl sm:text-2xl font-mono tabular-nums font-bold text-[#73E3B4] mt-0.5">
+                    {formatTaka(summary.liquidWalletTotal)}
+                  </div>
+                </div>
+                <div className="w-10 h-10 rounded-lg bg-[#1A1C20] border border-[#3D4943]/40 flex items-center justify-center text-[#73E3B4] shrink-0">
+                  <Wallet className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Overall Net Position */}
+              <div className="p-3.5 rounded-xl bg-[#0C0E12] border border-[#3D4943]/40 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-medium text-[#BCCAC1]">
+                    Overall Net Position:
+                  </div>
+                  <div className="text-xl sm:text-2xl font-mono tabular-nums font-bold text-[#E2E2E8] mt-0.5">
+                    {formatTaka(summary.netTotal)}
+                  </div>
+                </div>
+                <div className="w-10 h-10 rounded-lg bg-[#1A1C20] border border-[#3D4943]/40 flex items-center justify-center text-[#BCCAC1] shrink-0">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-[#3D4943]/20 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onNavigateToWallets}
+              className="btn-sm bg-[#1E2024] hover:bg-[#282A2E] text-[#73E3B4] border border-[#3D4943]/40 gap-1.5 cursor-pointer text-xs"
+            >
+              <span>Manage Wallets</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={onNavigateToPeople}
+              className="text-xs text-[#87948C] hover:text-[#E2E2E8] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>Personal Loans</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          LENDING & DEBT REMINDERS SECTION
+         ========================================================================= */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[#73E3B4]" />
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-[#BCCAC1]">
+              Lending & Debt Milestones
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onNavigateToPeople}
+            className="text-xs text-[#73E3B4] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>Ledger History</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        {/* State A: All Settled */}
+        {reminderData.allSettled && (
+          <div className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl p-6 text-center shadow-sm">
+            <div className="text-2xl mb-1.5 select-none">🎉</div>
+            <div className="text-sm font-semibold text-[#E2E2E8]">All Personal Debts Settled</div>
+            <p className="text-xs text-[#BCCAC1] mt-1">
+              There are no outstanding lending or debt balances at this time.
+            </p>
+          </div>
+        )}
+
+        {/* State B: Outstanding loans exist, but none reached milestone yet */}
+        {!reminderData.allSettled && reminderData.hasOutstandingWithoutReminder && (
+          <div className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl p-4 text-center text-xs text-[#87948C]">
+            <div className="text-[#BCCAC1] font-medium mb-0.5">No Milestone Reminders Due</div>
+            <span>All outstanding loans are within their grace period (less than 7 days old).</span>
+          </div>
+        )}
+
+        {/* State C: Active Milestones Due */}
+        {reminderData.activeReminders.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {reminderData.activeReminders.map((item) => {
+              const isReceivable = item.direction === 'receivable';
+              const milestoneLabel = item.currentMilestone?.labelEn || `${item.daysElapsed} days`;
+
+              return (
+                <div
+                  key={`${item.personId}_${item.currentMilestone?.key}`}
+                  className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl p-4 flex flex-col justify-between hover:border-[#3D4943]/70 transition-all shadow-sm"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold text-[#E2E2E8] flex items-center gap-2">
+                          <span>{item.personName}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1E2024] border border-[#3D4943]/40 text-[#73E3B4] font-medium">
+                            {milestoneLabel}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-[#87948C] mt-0.5">
+                          Recorded: {item.formattedRecordedDate}
+                        </div>
+                      </div>
+
+                      {onDismissMilestone && item.currentMilestone && (
+                        <button
+                          type="button"
+                          onClick={() => onDismissMilestone(item.personId, item.currentMilestone!.key)}
+                          className="p-1 rounded text-[#87948C] hover:text-[#E2E2E8] hover:bg-[#282A2E] text-[11px] cursor-pointer"
+                          title="Dismiss this milestone reminder"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="pt-1">
+                      <div className="text-[11px] text-[#BCCAC1]">
+                        {isReceivable ? 'They owe you:' : 'You owe:'}
+                      </div>
+                      <div
+                        className={`text-xl font-mono tabular-nums font-bold ${
+                          isReceivable ? 'text-[#73E3B4]' : 'text-[#FFB4AB]'
+                        }`}
+                      >
+                        {formatTaka(item.outstandingAmount)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-3 border-t border-[#3D4943]/30 mt-3 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReminderDetails(item)}
+                      className="text-[11px] text-[#87948C] hover:text-[#E2E2E8] hover:underline cursor-pointer"
+                    >
+                      Milestone Details
+                    </button>
+
+                    {isReceivable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleLaunchWhatsApp(item)}
+                        className="px-3 py-1.5 rounded-lg bg-[#1E2024] hover:bg-[#282A2E] text-[#73E3B4] border border-[#73E3B4]/40 hover:border-[#73E3B4] text-xs font-medium flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>Remind on WhatsApp</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onNavigateToPeople}
+                        className="px-3 py-1.5 rounded-lg bg-[#1E2024] hover:bg-[#282A2E] text-[#BEC7D5] border border-[#3D4943]/40 text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>View Ledger</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* =========================================================================
+          ACTIVE WALLETS SNAPSHOT
+         ========================================================================= */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-[#BCCAC1]">
+            Active Wallets & Accounts
+          </h3>
+          <button
+            type="button"
+            onClick={onNavigateToWallets}
+            className="text-xs text-[#73E3B4] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>All Wallets ({activeWallets.length})</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {summary.walletBalances.slice(0, 4).map((wallet) => (
+            <div
+              key={wallet.methodId}
+              onClick={onNavigateToWallets}
+              className="p-3.5 rounded-xl bg-[#1A1C20] border border-[#3D4943]/40 hover:border-[#73E3B4]/40 cursor-pointer transition-colors shadow-sm"
+            >
+              <div className="flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-[#87948C]" />
+                <span className="text-xs font-medium text-[#BCCAC1] truncate">
+                  {wallet.name}
+                </span>
+              </div>
+              <div className="text-base font-mono tabular-nums font-bold text-[#E2E2E8] mt-1.5">
+                {formatTaka(wallet.currentBalance)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* =========================================================================
+          RECENT ACTIVITY PREVIEW
+         ========================================================================= */}
+      <section className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-[#BCCAC1]">
+            Recent Financial Activity
+          </h3>
+          <button
+            type="button"
+            onClick={onNavigateToList}
+            className="text-xs text-[#73E3B4] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>Open Complete Ledger</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="bg-[#1A1C20] border border-[#3D4943]/40 rounded-xl divide-y divide-[#3D4943]/20 overflow-hidden shadow-sm">
+          {recentActivities.length === 0 ? (
+            <div className="p-8 text-center text-xs text-[#87948C]">
+              No transactions recorded yet. Tap "+ Record Entry" to log your first transaction.
+            </div>
+          ) : (
+            recentActivities.slice(0, 5).map((item) => (
+              <div
+                key={item.id}
+                onClick={onNavigateToList}
+                className="p-3.5 flex items-center justify-between hover:bg-[#1E2024]/60 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-lg bg-[#0C0E12] text-[#87948C] shrink-0 border border-[#3D4943]/20">
+                    {item.activityType === 'expense' && <TrendingDown className="w-4 h-4 text-[#FFB4AB]" />}
+                    {item.activityType === 'earning' && <TrendingUp className="w-4 h-4 text-[#73E3B4]" />}
+                    {item.activityType === 'transfer' && <ArrowRightLeft className="w-4 h-4 text-[#BEC7D5]" />}
+                    {item.activityType === 'transaction' && <Users2 className="w-4 h-4 text-[#73E3B4]" />}
+                    {item.activityType === 'recurring' && <Layers className="w-4 h-4 text-[#BEC7D5]" />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-[#E2E2E8] group-hover:text-[#73E3B4] transition-colors truncate">
+                      {item.title}
+                    </div>
+                    <div className="text-[10px] text-[#87948C] mt-0.5 truncate">
+                      {formatDisplayDate(item.date)} {item.categoryOrSourceOrPerson ? `· ${item.categoryOrSourceOrPerson}` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0 ml-3">
+                  <div
+                    className={`text-xs font-mono tabular-nums font-bold ${
+                      item.activityType === 'expense'
+                        ? 'text-[#FFB4AB]'
+                        : item.activityType === 'earning'
+                        ? 'text-[#73E3B4]'
+                        : 'text-[#E2E2E8]'
+                    }`}
+                  >
+                    {item.activityType === 'expense' ? '-' : item.activityType === 'earning' ? '+' : ''}
+                    {formatTaka(item.amount)}
+                  </div>
+                  {item.netEffectText && (
+                    <div className="text-[10px] text-[#87948C]">{item.netEffectText}</div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* =========================================================================
+          MODALS: MILESTONE DETAILS, WHATSAPP QUICK-SEND, FORMULA EXPLAINER
+         ========================================================================= */}
+      {selectedReminderDetails && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedReminderDetails(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md bg-[#1A1C20] border border-[#3D4943]/60 rounded-xl p-5 shadow-2xl flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-[#3D4943]/30 pb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-[#E2E2E8]">
+                  {selectedReminderDetails.personName}'s Loan Milestones
+                </h3>
+                <div className="text-[11px] text-[#BCCAC1]">
+                  Outstanding: <span className="font-mono tabular-nums text-[#73E3B4] font-medium">{formatTaka(selectedReminderDetails.outstandingAmount)}</span> · {selectedReminderDetails.daysElapsed} days elapsed
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReminderDetails(null)}
+                className="p-1 rounded text-[#87948C] hover:text-[#E2E2E8] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="text-[11px] font-medium uppercase tracking-wider text-[#BCCAC1]">
+                Calendar Milestone Schedule
+              </div>
+              <div className="divide-y divide-[#3D4943]/20 bg-[#0C0E12] border border-[#3D4943]/40 rounded-lg overflow-hidden">
+                {selectedReminderDetails.allMilestones.map((m) => (
+                  <div key={m.key} className="px-3 py-2 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {m.isReached ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#73E3B4]" />
+                      ) : (
+                        <div className="w-3.5 h-3.5 rounded-full border border-[#3D4943]" />
+                      )}
+                      <span className={m.isReached ? 'text-[#E2E2E8] font-medium' : 'text-[#87948C]'}>
+                        {m.labelEn}
+                      </span>
+                    </div>
+                    <span className="font-mono tabular-nums text-[11px] text-[#87948C]">{m.targetDate}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedReminderDetails(null)}
+                className="btn-sm bg-[#282A2E] text-xs text-[#E2E2E8] cursor-pointer hover:bg-[#333539]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Quick-Send Prompt Modal */}
+      {whatsAppModalItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setWhatsAppModalItem(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md bg-[#1A1C20] border border-[#3D4943]/60 rounded-xl p-5 shadow-2xl flex flex-col space-y-4 text-xs">
+            <div className="flex items-center justify-between border-b border-[#3D4943]/30 pb-3">
+              <h3 className="text-sm font-semibold text-[#E2E2E8]">
+                Send WhatsApp Reminder to {whatsAppModalItem.personName}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setWhatsAppModalItem(null)}
+                className="p-1 rounded text-[#87948C] hover:text-[#E2E2E8] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-[11px] text-[#BCCAC1] uppercase tracking-wider mb-1">
+                WhatsApp Phone Number
+              </label>
+              <input
+                type="tel"
+                value={tempPhone}
+                onChange={(e) => setTempPhone(e.target.value)}
+                placeholder="+88017XXXXXXXX"
+                className="w-full bg-[#0C0E12] border border-[#3D4943]/50 rounded-lg px-3 py-2 text-xs text-[#E2E2E8] outline-none focus:border-[#73E3B4] font-mono tabular-nums"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-[#BCCAC1] uppercase tracking-wider">
+                  Reminder Message Preview
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (whatsAppModalItem.whatsAppReminderText) {
+                      navigator.clipboard.writeText(whatsAppModalItem.whatsAppReminderText);
+                      setCopiedText(true);
+                      setTimeout(() => setCopiedText(false), 2000);
+                    }
+                  }}
+                  className="text-[10px] text-[#73E3B4] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedText ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedText ? 'Copied' : 'Copy Text'}</span>
+                </button>
+              </div>
+              <div className="p-3 rounded-lg bg-[#0C0E12] border border-[#3D4943]/40 text-[#BCCAC1] text-[11px] whitespace-pre-line leading-relaxed max-h-40 overflow-y-auto font-sans">
+                {whatsAppModalItem.whatsAppReminderText}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setWhatsAppModalItem(null)}
+                className="btn-sm bg-[#282A2E] text-xs text-[#BCCAC1] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendCustomPhoneWhatsApp}
+                className="btn-md bg-[#55C79A] hover:bg-[#73E3B4] text-[#003826] font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>Open WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Formula Explainer Modal */}
+      {showFormulaModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowFormulaModal(false);
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md bg-[#1A1C20] border border-[#3D4943]/60 rounded-xl p-5 shadow-2xl flex flex-col space-y-4">
+            <div className="flex items-center justify-between border-b border-[#3D4943]/30 pb-3">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-[#73E3B4]" />
+                <h3 className="text-sm font-semibold text-[#E2E2E8]">
+                  Understanding Net vs. Liquid Total
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFormulaModal(false)}
+                className="p-1 rounded text-[#87948C] hover:text-[#E2E2E8] cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-[#BCCAC1] leading-relaxed">
+              <p>
+                EcO maintains strict financial distinction between funds physically in your wallets and peer lending debts:
+              </p>
+
+              <div className="p-3 rounded-lg bg-[#0C0E12] border border-[#3D4943]/30 space-y-1.5 font-mono tabular-nums text-[11px]">
+                <div className="flex justify-between">
+                  <span className="text-[#87948C]">Liquid Wallet Total:</span>
+                  <span className="text-[#E2E2E8]">{formatTaka(summary.liquidWalletTotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#87948C]">(+) Total Receivables (Owed to you):</span>
+                  <span className="text-[#73E3B4]">+{formatTaka(summary.totalReceivables)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#87948C]">(-) Total Payables (You owe others):</span>
+                  <span className="text-[#FFB4AB]">-{formatTaka(summary.totalPayables)}</span>
+                </div>
+                <div className="pt-2 border-t border-[#3D4943]/40 flex justify-between font-semibold">
+                  <span className="text-[#E2E2E8]">(=) Net Financial Position:</span>
+                  <span className="text-[#73E3B4]">{formatTaka(summary.netTotal)}</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-[#87948C]">
+                When you lend money to someone from bKash, your liquid bKash balance decreases by that amount, but your overall net worth remains protected as an outstanding receivable until repaid.
+              </p>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowFormulaModal(false)}
+                className="px-4 py-1.5 rounded-lg bg-[#282A2E] text-xs text-[#E2E2E8] hover:bg-[#333539] cursor-pointer"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fixed & Emergency Adaptive Plan Details Modal */}
+      <FixedEmergencyDetailsModal
+        isOpen={showBudgetDetailsModal}
+        onClose={() => setShowBudgetDetailsModal(false)}
+        metrics={budgetMetrics}
+        onNavigateToSettings={onNavigateToSettings}
+      />
+    </div>
+  );
+};

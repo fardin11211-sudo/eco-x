@@ -1,0 +1,90 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all to ensure zero-trust security
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Root user document (Settings & Profile)
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
+
+      // Payment Methods / Wallets subcollection
+      match /paymentMethods/{methodId} {
+        allow read, write: if isOwner(userId) && isValidId(methodId);
+      }
+
+      // Expenses subcollection
+      match /expenses/{expenseId} {
+        allow read, write: if isOwner(userId) && isValidId(expenseId);
+      }
+
+      // Recurring Expenses subcollection
+      match /recurringExpenses/{recurringId} {
+        allow read, write: if isOwner(userId) && isValidId(recurringId);
+      }
+
+      // Earnings / Income subcollection
+      match /earnings/{earningId} {
+        allow read, write: if isOwner(userId) && isValidId(earningId);
+      }
+
+      // Transfers subcollection
+      match /transfers/{transferId} {
+        allow read, write: if isOwner(userId) && isValidId(transferId);
+      }
+
+      // People / Contacts subcollection
+      match /people/{personId} {
+        allow read, write: if isOwner(userId) && isValidId(personId);
+      }
+
+      // Transactions (Lending & Borrowing) subcollection
+      match /transactions/{transactionId} {
+        allow read, write: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      // Income Sources subcollection
+      match /sources/{sourceId} {
+        allow read, write: if isOwner(userId) && isValidId(sourceId);
+      }
+
+      // Notifications subcollection
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId) && isValidId(notificationId);
+      }
+
+      // Issue reports subcollection
+      match /issueReports/{reportId} {
+        allow read, write: if isOwner(userId) && isValidId(reportId);
+      }
+    }
+  }
+}

@@ -1,0 +1,219 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account document containing settings and profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Authentication UID" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "User display name" },
+        "email": { "type": "string", "maxLength": 200, "description": "User email address" },
+        "photoURL": { "type": "string", "maxLength": 500, "description": "Profile picture URL" },
+        "setupComplete": { "type": "boolean", "description": "Whether the user finished initial onboarding" },
+        "theme": { "type": "string", "enum": ["dark", "light"], "description": "Color theme" },
+        "colorPalette": { "type": "string", "enum": ["green", "blue", "orange"], "description": "UI brand color palette" },
+        "budgetMode": { "type": "string", "enum": ["calculated", "direct", "off"], "description": "Daily budget mode" },
+        "directDailyBudget": { "type": "number", "description": "Direct daily spend cap" },
+        "monthlyIncome": { "type": "number", "description": "Planned monthly income" },
+        "monthlyFixed": { "type": "number", "description": "Planned fixed expenses" },
+        "monthlySavings": { "type": "number", "description": "Planned monthly savings" },
+        "monthlyEmergency": { "type": "number", "description": "Planned emergency reserve" },
+        "bufferPct": { "type": "number", "description": "Safety buffer percentage" },
+        "cashoutChargeRate": { "type": "number", "description": "Default cash-out fee percentage" },
+        "categories": { "type": "array", "description": "Expense categories" },
+        "tags": { "type": "array", "description": "Transaction tags" },
+        "createdAt": { "type": "string", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update timestamp" }
+      },
+      "required": ["uid", "setupComplete", "budgetMode"]
+    },
+    "PaymentMethod": {
+      "title": "PaymentMethod",
+      "description": "Financial wallet or account (Cash, bKash, Nagad, Bank, Card)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique method identifier" },
+        "name": { "type": "string", "maxLength": 60, "description": "Account name" },
+        "type": { "type": "string", "enum": ["cash", "mobile_money", "bank", "credit_card", "other"] },
+        "isBuiltIn": { "type": "boolean", "description": "Whether this is a core built-in method" },
+        "isActive": { "type": "boolean", "description": "Whether wallet is active" },
+        "balance": { "type": "number", "description": "Current balance" },
+        "openingBalance": { "type": "number", "description": "Opening balance" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Update timestamp" }
+      },
+      "required": ["id", "name", "type", "isActive", "balance"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "An expense transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique expense identifier" },
+        "reason": { "type": "string", "maxLength": 100, "description": "Expense title or short reason" },
+        "category": { "type": "string", "maxLength": 60, "description": "Expense category" },
+        "description": { "type": "string", "maxLength": 500, "description": "Optional notes" },
+        "amount": { "type": "number", "description": "Expense amount in BDT" },
+        "type": { "type": "string", "enum": ["regular", "fixed", "emergency"] },
+        "payMethodId": { "type": "string", "description": "ID of payment method debited" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "YYYY-MM-DD date" },
+        "timestamp": { "type": "number", "description": "Epoch timestamp" }
+      },
+      "required": ["id", "amount", "type", "payMethodId", "date"]
+    },
+    "RecurringExpense": {
+      "title": "RecurringExpense",
+      "description": "An expense that spans multiple days",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique recurring expense identifier" },
+        "reason": { "type": "string", "maxLength": 100, "description": "Title" },
+        "category": { "type": "string", "maxLength": 60, "description": "Category" },
+        "amount": { "type": "number", "description": "Total amount" },
+        "days": { "type": "number", "description": "Duration in days" },
+        "startDate": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "endDate": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "payMethodId": { "type": "string" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["id", "amount", "days", "startDate", "endDate", "payMethodId"]
+    },
+    "Earning": {
+      "title": "Earning",
+      "description": "An income transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique earning identifier" },
+        "source": { "type": "string", "maxLength": 100, "description": "Source name" },
+        "description": { "type": "string", "maxLength": 500, "description": "Optional notes" },
+        "amount": { "type": "number", "description": "Amount credited in BDT" },
+        "payMethodId": { "type": "string", "description": "Wallet credited" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "amount", "payMethodId", "date"]
+    },
+    "Transfer": {
+      "title": "Transfer",
+      "description": "Wallet to wallet balance transfer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fromMethodId": { "type": "string" },
+        "toMethodId": { "type": "string" },
+        "requestedAmount": { "type": "number" },
+        "chargeApplied": { "type": "boolean" },
+        "chargeAmount": { "type": "number" },
+        "chargeRate": { "type": "number" },
+        "sourceDeducted": { "type": "number" },
+        "note": { "type": "string", "maxLength": 200 },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "fromMethodId", "toMethodId", "requestedAmount", "date"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "Person record for lending and borrowing ledgers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "PeerTransaction": {
+      "title": "PeerTransaction",
+      "description": "Give or take lending/borrowing transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "personId": { "type": "string" },
+        "type": { "type": "string", "enum": ["give", "take"] },
+        "amount": { "type": "number" },
+        "payMethodId": { "type": "string" },
+        "tag": { "type": "string", "maxLength": 50 },
+        "description": { "type": "string", "maxLength": 500 },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "timestamp": { "type": "number" },
+        "chargeApplied": { "type": "boolean" },
+        "chargeRate": { "type": "number" },
+        "chargeAmount": { "type": "number" },
+        "feeTreatment": { "type": "string", "enum": ["separate", "included"] }
+      },
+      "required": ["id", "personId", "type", "amount", "payMethodId", "date"]
+    },
+    "IncomeSource": {
+      "title": "IncomeSource",
+      "description": "Categorized source for earnings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification with 7-day TTL",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 120 },
+        "message": { "type": "string", "maxLength": 500 },
+        "date": { "type": "string" },
+        "read": { "type": "boolean" },
+        "ttlExpiresAt": { "type": "number" },
+        "type": { "type": "string", "enum": ["reminder", "system", "sync"] }
+      },
+      "required": ["id", "title", "message", "read"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile settings and configuration document"
+    },
+    "/users/{userId}/paymentMethods/{methodId}": {
+      "schema": "PaymentMethod",
+      "description": "User wallets and payment accounts"
+    },
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "User expenses"
+    },
+    "/users/{userId}/recurringExpenses/{recurringId}": {
+      "schema": "RecurringExpense",
+      "description": "User recurring expenses"
+    },
+    "/users/{userId}/earnings/{earningId}": {
+      "schema": "Earning",
+      "description": "User earnings"
+    },
+    "/users/{userId}/transfers/{transferId}": {
+      "schema": "Transfer",
+      "description": "User wallet-to-wallet transfers"
+    },
+    "/users/{userId}/people/{personId}": {
+      "schema": "Person",
+      "description": "People involved in lending and borrowing"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "PeerTransaction",
+      "description": "User loan and borrowing transactions"
+    },
+    "/users/{userId}/sources/{sourceId}": {
+      "schema": "IncomeSource",
+      "description": "User income sources"
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    }
+  }
+}

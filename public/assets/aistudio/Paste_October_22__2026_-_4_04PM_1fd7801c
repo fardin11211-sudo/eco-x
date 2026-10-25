@@ -1,0 +1,1597 @@
+<!--
+EcO Smart Ledger — Google AI Studio Master Prompt
+This document combines the existing EcO Final Product Blueprint with the latest binding UI/UX and implementation instructions.
+-->
+
+EcO Smart Ledger — Complete Product Concept & Google AI Studio Master Prompt
+Purpose: Give this entire Markdown document to Google AI Studio as the product specification for building EcO. It describes the product, page structure, financial behavior, migration requirements, visual system, and implementation workflow.
+
+Instruction priority: The authoritative overrides below take precedence over any conflicting older wording later in this document. The existing product blueprint remains the source for established financial semantics and the eco-backup v1 contract.
+
+MASTER INSTRUCTIONS FOR GOOGLE AI STUDIO
+You are the Principal Software Architect, Senior Vanilla-JavaScript Engineer, Fintech Product Engineer, Accessibility Specialist, and QA Engineer responsible for implementing EcO (Echo) Smart Ledger, a complete, maintainable, mobile-first personal-finance PWA.
+
+Your job is to generate working code for the whole website—not just mockups or isolated screens. Use this document as the product requirements and implementation contract. Work methodically, page by page, with shared architecture and verified financial logic.
+Non-negotiable operating boundaries
+1. Firebase configuration is supplied manually by the owner. Do not invent, expose, or fabricate Firebase API keys, project credentials, OAuth details, or other secrets. Create a clearly marked configuration module/template and tell the owner exactly where to paste their own Firebase web-app configuration.
+2. The owner will manually configure Firebase Security Rules, Firestore indexes, and Firebase Console security settings. Do not claim to deploy or configure these. Provide a separate, clearly documented FIREBASE_SETUP.md containing the required collections/queries, index requirements, suggested rules design and a manual security checklist. Do not silently weaken security to make the app work.
+3. Do not put service-account credentials, Admin SDK credentials, private keys, or privileged secrets in browser code.
+4. The app may use Firebase Authentication and Firestore from the browser. Any operation that requires trusted privileges, atomic cross-user writes, scheduled cleanup, or reliable delayed execution must be designed for a trusted backend (such as Cloud Functions) or an explicitly documented managed Firebase feature. Do not pretend browser-only JavaScript can securely perform privileged actions or run while the browser is closed.
+5. Do not invent the user's Firebase project configuration. Use placeholders in source code and make startup/configuration errors clear.
+6. Do not silently alter established financial semantics. Implement the formulas and migration compatibility described below, and write regression tests for them.
+7. Do not stop after generating a pretty dashboard. Build the full page set, shared components, data layer, state handling, validation, loading/error/empty states, and tests.
+8. Do not create a single giant, tangled HTML file for the entire product. Use a clear, practical multi-file structure with shared modules and page-specific modules. Keep the stack simple: HTML, CSS, and vanilla ES modules JavaScript unless the owner explicitly changes the requirement. No React, Vue, Angular, or build system is required.
+9. Never fake functionality. If a feature depends on missing backend setup, implement the safe UI and documented integration boundary, and label what remains to be configured. Do not show success for a write that failed.
+10. Do not expose private financial information through public sharing, logs, debug output, notifications, or error messages.
+Latest binding product and design decisions
+These are the latest decisions and override conflicting older descriptions in this document.
+- Design identity: “Institutional Emerald”, dark-only, layered-charcoal fintech terminal aesthetic.
+- Theme: dark mode only. Set <html class="dark">; do not implement a light theme or theme toggle.
+- Normal-view principle: “Minimal by default. Detailed on demand. Clear at every step.” Apply progressive disclosure to every page and component. The default view shows only the exact information needed for the current task. Explanations, extra metrics, audit metadata, and advanced actions belong in a detail page, side panel, modal, bottom sheet, or expandable region.
+- No cluttered cards: one card = one purpose, one primary value/title, one concise label if needed, and a subtle detail affordance only when useful. No long descriptions, repeated labels, unnecessary statistics, multiple competing buttons, or decorative data inside ordinary cards.
+- Payment methods: Cash is the only method created by default for a new user. Every other method is user-created. Never auto-create bKash, Nagad, Rocket, City Bank, or any other method for a new account.
+- Unified payment-method styling: all payment methods use the same EcO color treatment. Do not use brand-specific bKash pink or Nagad orange. A name and a simple neutral icon distinguish methods.
+- Payment-method naming: no phone number or account number is required. Names can be “bKash”, “Nagad”, “City Bank”, or anything the user chooses. Duplicate base names use Name, Name~2, Name~3, and so on. Each record has a stable internal ID; the display name is not the ID.
+- Legacy JSON import: restore bKash/Nagad only if the imported JSON actually represents or references those methods. If it contains bKash but no Nagad, import bKash only. Do not add missing brands automatically. Preserve legacy references and transaction history.
+- Global entry: one global Add (+) workflow handles Expense, Income/Earning, Transfer, Give, and Take. Show only the fields relevant to the chosen type.
+- Unified activity: all financial activity is discoverable from one List page with filtering. Detail views expose full records.
+- Financial clarity: distinguish Wallet Total from Net Total. A wallet-to-wallet transfer is not income or expense. A pending shared transaction is not an accepted transaction.
+- Owner-managed Firebase: owner manually adds Firebase configuration and configures rules, indexes, and console security. Code generation must include accurate instructions and must not claim these tasks were completed.
+- Responsive shells: desktop sidebar/header, mobile top header/bottom navigation/central Add action, and a mobile ledger variant. Mobile must respect safe-area insets.
+EcO (Echo) — Final Product Blueprint
+Updated Personal Finance PWA, User Journeys, Data Architecture, and Migration Plan
+Document status: Proposed authoritative blueprint for the next EcO version
+Product: EcO (Echo) — personal finance and expense habit tracker
+Primary locale: Bangladesh; currency: Bangladeshi Taka (৳)
+Frontend baseline: Plain HTML, CSS, and vanilla JavaScript; Firebase Authentication and Firestore
+Major changes: First-launch legacy-user onboarding and JSON migration, one global Add (+) workflow, one unified activity List, configurable payment methods, and mutually approved EcO-to-EcO ledger connections.
+
+Revision note: This edition incorporates the exact legacy eco-backup v1 JSON contract, seven-day notification retention, and an explicitly user-triggered WhatsApp debt-reminder flow. The backup contract supplied by the project owner takes precedence over any earlier illustrative schema in this document.
+Implementation note: This document combines the supplied current-site blueprint with the requested modifications. The current blueprint itself warns that some implementation details need verification against the latest source code. Treat exact existing field semantics and formulas as compatibility requirements to test—not as permission to silently change them. New schemas below are proposals for the new version.
+
+1. Product Vision
+EcO should help a person answer five everyday money questions with minimal effort:
+1. What did I spend, earn, transfer, lend, or borrow?
+2. How much money do I currently have in each wallet/account?
+3. How much money is realistically available to spend today?
+4. Who owes me, and whom do I owe?
+5. What habits or patterns can I change based on my real financial history?
+The product should feel like one coherent money-management system—not a collection of separate forms and disconnected pages. Every financial event begins from one global Add (+) action; all events can be reviewed from one List page; the Dashboard explains the current situation; Wallets explain where money is held; Statistics explain patterns; Transactions explain money involving other people; and Settings controls the system.
+Product principles
+- Protect continuity: existing users must be able to bring their old data into the new version.
+- Fast capture: routine entries should take only a few deliberate steps.
+- Progressive disclosure: show only the fields relevant to the selected activity and current step.
+- One source of truth: payment methods, categories, sources, tags, and people must not be separately hardcoded on every page.
+- Trustworthy numbers: wallet money, receivables, payables, spending, and available budget must be clearly distinguished.
+- No surprise sharing: connected accounts share only explicitly approved ledger events, never the user's whole financial account.
+- No silent data loss: imports, edits, deletions, connection changes, and migrations must be previewable, traceable, and recoverable where practical.
+- Respectful behavioural design: use neutral, non-shaming language. Show patterns and options rather than judging the user.
+- Mobile-first practicality: the Add flow, List filters, and balance cards must work comfortably on small screens.
+- Secure by design: client-side UI checks are for usability; Firestore rules and trusted backend operations enforce security.
+2. First Launch: New User or Existing EcO User
+This is the first screen shown to a person entering the new version for the first time. It must appear before the normal setup wizard, but only once per account/device state as appropriate. Do not show it on every page visit.
+2.1 Welcome screen
+Heading: “Welcome to EcO”
+Question: “Have you used an earlier version of EcO?”
+
+Two clear choices:
+- I’m new to EcO
+- I used EcO before — import my data
+A small secondary link can explain that existing users need the JSON backup exported from the previous version. Do not imply that the new version can automatically access a different Firebase project or browser's old data.
+2.2 New user path
+1. User chooses I’m new to EcO.
+2. Explain the purpose of the app in a short, skippable introduction.
+3. User signs in or creates an account through the existing Firebase Authentication flow.
+4. Run the normal setup wizard: currency/locale defaults, budget preference, optional income and planned allocations, and initial wallet balances.
+5. Show the Dashboard with a visible Add your first activity action and a brief explanation of the global Add (+) button.
+6. Let the user skip optional budget setup and configure it later in Settings.
+Do not require a user to invent income or budget data just to use the expense tracker.
+2.3 Existing user path
+1. User chooses I used EcO before — import my data.
+2. Explain: “Choose the JSON backup exported from your previous EcO version. Your old records will be checked before anything is imported.”
+3. Offer a file picker accepting .json. Drag-and-drop may be supported on desktop, but must not be the only method.
+4. Parse the file locally first. Do not upload the file automatically before the user reviews the preview.
+5. Validate the format, version, required sections, types, timestamps, record counts, and completeness flag.
+6. Display an import preview:
+   - Backup export date and source format/version.
+   - Counts of expenses, recurring schedules, earnings, transfers, opening balances, people, peer transactions, sources, settings, tags/categories, and other supported data.
+   - Warnings for unknown fields, invalid records, missing references, duplicate IDs, unsupported legacy features, and incomplete backups.
+   - Whether the backup contains share links or sensitive identifiers that will not be reused.
+7. Ask the user to sign in/create an account before cloud import.
+8. Ask for explicit confirmation: Import X records into this EcO account.
+9. Import in bounded batches with a migration ID and progress indicator. Preserve source IDs where safe; otherwise store a stable legacyId and a mapping table.
+10. Verify counts and key totals after import. Show an import report with imported, skipped, and failed records.
+11. Only mark migration complete when verification passes or the user explicitly accepts a clearly explained partial import.
+12. Continue to setup only for missing new-version preferences. Do not overwrite imported settings with defaults.
+13. Open the Dashboard and show a quiet “Legacy data imported” confirmation with a link to the import report.
+Import safety rules
+- Never clear or overwrite existing user data automatically.
+- Import should be idempotent: retrying the same backup must not duplicate records. Use migrationId + source collection + source document ID or an equivalent deterministic key.
+- Provide a dry-run preview before writes.
+- Validate every record; do not trust JSON content just because it came from the old app.
+- Never import Firebase authentication tokens, credentials, or secrets.
+- Do not blindly reuse old public share tokens. Recreate share links only after an explicit user action, using secure token generation and the new security model.
+- Keep original dates, numeric amounts, historical fee values, transaction direction, and document relationships. Do not recalculate historical transfers with today's fee settings.
+- Keep a local copy of the selected file under the user's control; the app should not claim it has preserved the file unless it actually has.
+- If import fails midway, resume safely or offer a controlled rollback of only the records created by that migration. Never delete unrelated records.
+- If the old version has no export feature or the file is not a valid backup, explain the problem and show how to create the required backup in the old version. Do not pretend automatic migration is possible.
+2.4 Exact legacy backup contract: eco-backup version 1
+This section is authoritative for importing backups created by the old version's Settings → Store Backup button. It replaces any earlier illustrative backup schema in this blueprint. Do not assume the backup uses a simplified sourceApp, complete, or plain-object schema: the real contract uses app, integrity, and {id, fields} records.
+File-level contract
+- UTF-8 JSON, pretty-printed with two-space indentation, MIME type application/json.
+- Filename: eco-backup-YYYY-MM-DD-HH-mm-ss.json; the filename timestamp is UTC and represents the same instant as exportedAt.
+- exportedAt is an ISO-8601 UTC string ending in Z.
+- The export is for the currently signed-in user's own users/{uid}/… data and deliberately contains no source UID.
+- The old exporter reads from Firestore server, not the offline cache. If any read or serialization fails, it produces no file; a present file has integrity.complete: true.
+- Export is read-only and must not write to or modify Firestore.
+Required top-level shape
+{
+  "format": "eco-backup",
+  "formatVersion": 1,
+  "exportedAt": "2026-10-21T08:49:20.000Z",
+  "app": {
+    "name": "EcO (Echo)",
+    "purpose": "Personal finance tracker – full per-user data backup"
+  },
+  "timestampEncoding": "Human-readable note describing tagged Firestore values",
+  "data": {
+    "settings": [],
+    "expenses": [],
+    "recurringExpenses": [],
+    "earnings": [],
+    "transfers": [],
+    "openingBalances": [],
+    "sources": [],
+    "people": [],
+    "transactions": [],
+    "shareLinks": [],
+    "pendingRequests": []
+  },
+  "integrity": {
+    "complete": true,
+    "counts": {
+      "settings": 1,
+      "expenses": 0,
+      "recurringExpenses": 0,
+      "earnings": 0,
+      "transfers": 0,
+      "openingBalances": 1,
+      "sources": 0,
+      "people": 0,
+      "transactions": 0,
+      "shareLinks": 0,
+      "pendingRequests": 0
+    },
+    "redactedFields": {},
+    "excluded": [
+      "shareHashes",
+      "issueReports",
+      "userDirectory",
+      "connectionInvites",
+      "connections",
+      "sharedTransactions",
+      "voidRequests",
+      "admins",
+      "adminAuditLog"
+    ]
+  }
+}
+The example values are illustrative; real counts and redaction entries depend on the actual export. data.<collection> arrays contain records shaped exactly as follows:
+{
+  "id": "original-firestore-document-id",
+  "fields": {
+    "amount": 123.45,
+    "date": "2026-10-21"
+  }
+}
+id is the original Firestore document ID. fields contains the original document fields without renaming, recalculation, rounding, or normalization. Preserve unknown fields for forward compatibility. Array ordering has no semantic meaning.
+Exported collections and legacy meanings
+All listed collections are exported from users/{uid}/<collection>.
+Collection	Contract and compatibility notes
+settings	Normally one record with ID main. Known fields include theme, setupComplete, budgetMode, directDailyBudget, monthlyIncome, monthlyFixed, monthlySavings, monthlyEmergency, bufferPct, cashoutChargeRate, categories, hiddenDefaultCategories, tags, and any other fields present.
+expenses	Known fields include reason, category, description, amount, type (regular/fixed/emergency), payMethod, date, timestamp.
+recurringExpenses	Expense-like fields plus perDay, days, startDate, endDate, monthly.
+earnings	Known fields include source, description, amount, payMethod, date, timestamp.
+transfers	Known fields include from, to, requestedAmount, chargeApplied, chargeAmount, sourceDeducted, chargeRate, note, date, timestamp. Preserve historical fee values.
+openingBalances	Known fields include cash, bkash, nagad, note, date, timestamp. Normally one record with ID current.
+sources	Known fields include name, description, timestamp.
+people	Known fields include name and createdAt; createdAt is used instead of timestamp.
+transactions	Known fields include person, personId, type (give/take), amount, totalAmount, chargeApplied, chargeAmount, chargeType, payMethod, tag, description, date, isOpening, fromRequest, timestamp.
+shareLinks	Known fields include personId, person, createdAt, and hash; the hash is redacted as specified below.
+pendingRequests	Known fields include person, personId, type, amount, payMethod, tag, submitterNote, date, status, submittedAt, resolvedAt. submitterNote is free text and must be rendered safely.
+
+
+These are known fields, not allowlists. Exporters copy all existing fields, including newer fields such as isLinked, fromUID, toUID, linkedTxnId, voided, and voidRequestId if present. Importers must tolerate missing and unknown fields.
+Special-value encoding
+Normal JSON strings, booleans, finite numbers, null, arrays, and nested objects stay normal JSON. Firestore special types are encoded as tagged objects identified by __type:
+Original value	JSON representation
+Firestore Timestamp	{"__type":"timestamp","value":"2023-11-14T22:13:20.000Z","seconds":1700000000,"nanoseconds":0}
+JavaScript Date	{"__type":"timestamp","value":"<ISO UTC>"}
+GeoPoint	{"__type":"geopoint","latitude":...,"longitude":...}
+DocumentReference	{"__type":"reference","path":"users/…/…"}
+Bytes	{"__type":"bytes","base64":"…"}
+NaN / positive or negative Infinity	{"__type":"number","value":"NaN"} or the corresponding string form
+
+
+Restore tagged values recursively, including inside arrays and nested objects. Rebuild Firestore timestamps from seconds and nanoseconds for exactness; use value only if seconds are absent. Date-only strings such as "2026-10-21" remain plain strings. If an old export encounters an unrepresentable value such as undefined or an unknown type, export fails instead of guessing.
+Share-link redaction and reconstruction
+shareLinks.hash is a reusable public access token, so the exporter sets every exported fields.hash to null. If a share-link document ID was itself equal to its hash, the exported id is replaced by redacted-<n>, where n is its position in the array. integrity.redactedFields contains {"shareLinks.hash": <count>} when values were removed.
+
+EcO 2.0 must not attempt to recover old hashes. After import, offer to create fresh secure share links for the same personId/person and tell the user that old links are no longer valid/recoverable from the backup. Do not activate or publish new links without explicit user confirmation.
+Intentionally excluded from the backup
+- Top-level shareHashes and issueReports.
+- userDirectory, connectionInvites, connections, sharedTransactions, and voidRequests, because these involve other users or shared-account data.
+- admins and adminAuditLog.
+- Firebase credentials, API keys, auth tokens, passwords, and other secrets.
+- The counterpart copy of a linked transaction stored in another user's account.
+Do not tell users that importing this backup restores mutual connections or the other person's account-side copy of linked transactions. Those are intentionally absent; users must reconnect and establish new shared events in EcO 2.0.
+Required importer validation
+1. Parse JSON and require format === "eco-backup".
+2. Support formatVersion === 1; reject unsupported versions with a clear message. Do not silently attempt a best-effort import of a version the importer does not understand.
+3. Require integrity.complete === true.
+4. For every expected collection, require a valid array and verify data[name].length === integrity.counts[name]. Report malformed/missing count entries as validation errors rather than treating them as zero.
+5. Validate each record has a string id and object fields; reject duplicate IDs within a collection or explain a deterministic collision strategy before writes.
+6. Restore tagged special values recursively and validate the tag's shape before constructing native values.
+7. Map old field names to the EcO 2.0 schema in the importer/adapter, never by modifying the selected backup file.
+8. Preserve original IDs where safe. Where the new schema requires different IDs, store a deterministic source-ID mapping and rewrite only the references explicitly covered by that mapping.
+9. Import people before features that need to resolve personId, even if the physical write order is otherwise independent.
+10. Make retries idempotent with a stable migration ID and deterministic source-record mapping. A retry must not create duplicate financial events.
+11. Use bounded batches and respect Firestore write limits. Record progress so interrupted imports can resume safely.
+12. Re-read imported records and verify counts and key totals before reporting success.
+13. Recreate share links with new hashes only after consent.
+14. The old exporter was tested only against a mocked Firestore in Node—not verified against a live database or browser. Before launch, test with a genuine backup from the old app, including timestamps, redaction, all collections, failure-aborts-with-no-file, and a full restore/verification round trip.
+The selected backup file must be treated as untrusted input even if it claims to be an EcO export. Do not import executable content or render user-supplied strings as HTML. A successful parse is not proof of a valid or safe backup.
+3. Navigation and Application Shell
+Desktop shell
+- Left sidebar, retaining the current approximate 236px layout unless the redesign requires a tested adjustment.
+- EcO logo/brand and active account identity.
+- Primary destinations: Dashboard, List, Statistics, Wallets, Transactions, Settings.
+- Prominent global + Add action.
+- Notification/inbox indicator for connection requests and pending transaction proposals.
+- Theme control/profile actions where appropriate.
+Mobile shell
+- Compact top header with page title and notification/profile affordance.
+- Slide-out navigation drawer.
+- Bottom navigation with the most-used destinations and a central Add (+) action.
+- Respect device safe areas, keyboard visibility, and modal scrolling.
+- On small screens, show records as compact rows/cards or a horizontally scrollable table with pinned key information; never hide essential actions off-screen.
+Global navigation rules
+- The active page is visually obvious.
+- Opening or closing Add should not reset the current page's filters or scroll position.
+- The global Add modal should be available on every authenticated main page.
+- If a user opens Add from a filtered List, successful save should preserve the filters and optionally highlight the new record.
+- Public share_view.html remains a separate, minimal experience and does not expose the authenticated app shell.
+- Use the existing theme system: dark default and light mode, purple primary accent, bKash pink, Nagad orange, and consistent Bangladeshi Taka formatting.
+4. Global Add (+) Modal
+The global Add button is the only primary entry point for creating the four main financial activity types:
+1. Expense
+2. Earning
+3. Transfer
+4. Transaction
+Remove duplicate page-level creation forms after the new flow has passed testing. Keep edit/correction actions and unrelated management actions where needed.
+4.1 Modal interaction rules
+- First screen asks “What would you like to add?”
+- Use four clear choices with a short description/icon.
+- Show a step indicator, e.g. “Step 2 of 3”.
+- Buttons: Back, Next, Cancel, and a final save action.
+- Preserve entered values when navigating backward or opening a small inline “Add Person/Source/Tag” dialog.
+- Validate the current step before moving forward; show the error next to the relevant field.
+- Pressing Enter advances a valid non-final step, and submits a valid final step. Enter must not skip steps, trigger twice, or submit while an inline dialog is open.
+- Disable the final button while saving. Use a submission lock and an idempotency key to prevent duplicate writes.
+- Escape and backdrop-click may close the modal only if no save is in progress; if data has been entered, ask whether to discard it.
+- Return focus to the Add button on close; trap keyboard focus inside the modal while open.
+- On success, close the modal, show a success message, and refresh affected shared state, balance cards, budget summaries, statistics, and List data.
+- If save fails, keep the modal and entered data intact, show a useful error, and allow safe retry.
+- Never update a confirmed balance from a pending connected-user proposal.
+4.2 Expense workflow
+Step 1 — Choose expense kind
+- Daily Expense
+- Recurring Expense
+Daily expense — Step 2: Context
+- Date (default today, editable).
+- Expense type using existing options (e.g. regular/fixed/emergency where supported by the current model).
+- Category, if the existing workflow uses it at this stage; otherwise request it in the details step.
+- Next.
+Daily expense — Step 3: Details
+- Payment method.
+- Amount.
+- Description/reason.
+- Save Expense.
+Recurring expense — Step 2: Schedule
+- Start date.
+- Duration in days.
+- End date preview calculated from the defined inclusive rule.
+- Category.
+- Allow editing the end date only if the data model supports an explicit end date; otherwise it is a read-only preview.
+- Date rule: duration is inclusive. For start date S and duration D, end date = S + (D − 1) calendar days. D must be a positive integer. This is a proposed new UI rule; before implementation, reconcile it with the existing recurring-expense algorithm and migrate without changing historical meaning.
+- Next.
+Recurring expense — Step 3: Details
+- Payment method.
+- Amount or per-day amount, matching the existing model's actual semantics.
+- Description.
+- Save Recurring Expense.
+Do not silently convert a recurring schedule into many independent expenses unless the existing model already materializes occurrences. In the unified List, label schedule entries separately from actual generated/recorded expenses.
+4.3 Earning workflow
+Step 1 — Earning information
+- Date (default today).
+- Source selector.
+- Small + beside Source opens a compact create-source dialog.
+- Next.
+Step 2 — Earning details
+- Received in (configured payment method).
+- Amount.
+- Description.
+- Save Earning.
+New sources should be persisted to the existing source collection, appear immediately in the selector, and be manageable in Settings.
+4.4 Transfer workflow
+Step 1 — Date
+- Date (default today).
+- Next.
+Step 2 — Transfer details
+- From payment method.
+- To payment method.
+- Amount to transfer.
+- Note.
+- Fee preview only when the existing fee rules say it applies.
+- Transfer Now.
+Rules:
+- From and To must differ.
+- Amount must be positive and valid.
+- Use one configured payment-method source for both selectors.
+- Preserve historical requestedAmount, chargeApplied, chargeAmount, sourceDeducted, and chargeRate semantics.
+- Apply the configured mobile-financial-service cash-out fee only to qualifying directions/operations. Do not apply it automatically to bank-to-bank transfers.
+- Do not classify the principal transfer as income or expense. If the existing model treats a fee as an expense, preserve that explicit rule and ensure it is counted exactly once.
+- A valid zero-percent fee must remain zero; avoid fallback logic that treats numeric zero as missing.
+4.5 Transaction workflow (money involving a person)
+Step 1 — Transaction information
+- Date.
+- Person selector.
+- + beside Person to create a person without leaving the flow.
+- Tag selector.
+- + beside Tag to create a tag.
+- Next.
+Step 2 — Transaction details
+- Transaction type using the established Give/Take or Give/Receive semantics.
+- Payment method.
+- Amount.
+- Description/note if supported by the existing transaction schema.
+- Save Transaction.
+The UI must explain the direction in plain language, such as “I gave money” versus “I received/borrowed money,” rather than relying on ambiguous labels alone. Preserve amount versus totalAmount and fee-related fields; do not collapse fields without a tested migration.
+
+For a local person, save to the user's own ledger under existing semantics. For a connected EcO person, create a proposal and show Pending status; it is not a confirmed shared ledger event until accepted. The user's own confirmed balance should not be altered by a pending proposal under the recommended default.
+5. Unified List Page
+The List becomes the single place to browse the primary financial activity history across the four activity types.
+5.1 Activity types
+- All Activities
+- Expenses
+- Earnings
+- Transfers
+- Transactions
+Keep recurring schedules identifiable, either as a sub-type of expense or a clearly labelled schedule record. Do not double-count a recurring schedule and its generated occurrences.
+5.2 Suggested columns
+- Date/time (use date as primary sort; timestamp as tie-breaker).
+- Activity type.
+- Category / source / person.
+- Description / note.
+- Payment method or From → To.
+- Direction/status where relevant (Give/Take, pending/accepted/local-only).
+- Amount, with transfer fees shown separately when relevant.
+- Actions (view/edit/delete/correct, depending on record type and permissions).
+Do not force meaningless blanks into every row. Use type-specific secondary text or detail drawers for fields that do not apply.
+5.3 Filters and search
+- Activity type.
+- Date range.
+- Payment method.
+- Category for expenses.
+- Source for earnings.
+- Person and Give/Take direction for transactions.
+- Status for connected proposals.
+- Text search across descriptions, category/source/person names where safe and practical.
+- Sort newest/oldest.
+- Clear filters.
+Only show relevant filters for the selected activity type. Filter changes should not require page navigation.
+5.4 Performance and history behavior
+- Do not load an unbounded lifetime history into memory by default.
+- Use Firestore query limits and cursor-based pagination or “Load more”.
+- For combined views across separate Firestore collections, normalize records into a common display model in the browser. This display model is not a new persisted financial record.
+- Keep original source collection and document ID on each normalized item so edit/delete actions target the correct record.
+- Merge and sort records deterministically by date/timestamp.
+- Avoid creating duplicate Firestore documents merely to make the List easier to render.
+- Provide loading, empty, no-filter-match, offline, and error states.
+- On mobile, use compact cards or an accessible responsive table.
+- Editing a record must preserve historical fields not shown in the form.
+5.5 Existing history sections
+- Remove redundant primary activity tables from Dashboard, Wallet, and Transactions if the List fully replaces them.
+- Wallet may retain a short recent-activity preview linking to List filtered by that wallet.
+- Transactions may retain person-specific ledger history because it is a contextual ledger, but its primary cross-app activity history belongs in List.
+- Statistics should summarize data, not duplicate a full activity table.
+- All existing correction/edit/delete capabilities must be preserved somewhere discoverable.
+6. Dashboard — index.html
+Purpose
+Provide a quick, calm overview of today's spending, budget status, wallet snapshot, and important outstanding actions.
+Main sections
+1. Budget hero: daily allowance and progress ring; explain whether the value is direct, calculated, or disabled.
+2. Today's spending: spent today and remaining daily allowance where budget mode permits.
+3. Wallet snapshot: combined wallet total plus individual account summary or top balances.
+4. People balance summary: amounts owed to the user and owed by the user, clearly separated.
+5. Recent activity preview: a few latest records with “View all in List”.
+6. Pending actions: transaction proposals awaiting the user's review, connection requests, and import/migration notices if relevant.
+7. Global Add (+): always accessible.
+Behaviour and efficiency
+- Default the dashboard to meaningful data, not a setup wall after migration.
+- Make first-use actions obvious but dismissible.
+- Do not imply that “money in wallets” equals “net financial position.”
+- Use neutral habit insights, e.g. “Transport was a larger share of spending this week,” not “You were bad with money.”
+- Do not over-notify or use guilt, streak pressure, or alarming colors for ordinary spending.
+- Load only the data needed for dashboard cards; cache data for the current session and refresh affected parts after writes instead of refetching every collection repeatedly.
+7. Wallets Page — wallet12.html or successor
+Purpose
+Show where money is held and how each account balance is calculated.
+Main sections
+- One card for every active payment method.
+- Combined wallet total.
+- Actual/net balance, shown separately with a short explanation.
+- Opening balances and an opening-balance setup/edit flow.
+- Earnings and transfer-related controls should now launch the global Add modal with the appropriate type preselected.
+- Recent wallet activity preview and a link to List filtered to the selected method.
+- Clear display of transfer fees when relevant.
+Configurable payment methods
+Default built-in methods:
+1. Cash
+2. bKash
+3. Nagad
+Allow up to 10 custom methods, for 13 total including built-ins.
+
+Each custom method should have:
+- Stable internal ID (do not use display name as the database identity).
+- Display name.
+- Method/account type (cash, mobile financial service, bank, credit card, other), where relevant.
+- Active/archived state.
+- Created/updated timestamps.
+- Optional metadata only if genuinely needed; avoid storing unnecessary account numbers or sensitive credentials.
+Balance and lifecycle rules
+- Every active method is displayed even if it has no transactions; show ৳0.00 and a prompt to set an opening balance if appropriate.
+- Adding a method must not change existing balances.
+- Renaming a method updates its displayed name but does not rewrite historical transaction values if records store snapshots; stable method IDs should resolve to the current label for normal display, while archived historical labels remain readable.
+- A method with historical activity cannot be hard-deleted. Archive it and prevent new selection; keep old records and reports readable.
+- Built-in methods cannot be removed or duplicated.
+- The user's opening balance for a new method is a separate setup entry/state, not income.
+- A credit card needs a carefully defined balance convention (e.g. positive available funds versus amount owed). Do not treat credit card liability as ordinary cash without an explicit model. If credit cards are included in the first release, document the sign and net-worth treatment before implementation.
+- The combined wallet total must include only account balances that follow the same defined convention; explain whether credit liabilities are included in a separate liability subtotal.
+Backward compatibility
+Old records with strings such as Cash, bKash, and Nagad must still resolve to built-in method IDs. Migration should map known strings to stable IDs and preserve the original value in a legacy field if needed. Unknown values must be flagged for review, not silently mapped to Cash.
+8. Transactions and People Page — transaction12.html or successor
+Purpose
+Manage local people, person-level balances, connected EcO users, and shared transaction proposals.
+People list
+Each person row should show:
+- Name.
+- Local or Connected status.
+- Amount the person owes the user / amount the user owes them.
+- Pending proposal count/status where applicable.
+- Actions: open ledger, Connect, rename, archive/delete safely.
+Deleting a person must not erase financial history. If transactions exist, archive the person or require an explicit, safe cleanup flow. If the person has a connected account, disconnection must not erase accepted historical events.
+Local people
+- Remain private to the current user.
+- Continue to use existing Give/Take logic.
+- Existing shareable ledger behavior remains available for people without EcO accounts.
+- A share link grants only the access explicitly described by its scope; it must not expose unrelated expenses, earnings, wallets, or settings.
+Unique EcO user code and mutual connection
+- Each account receives a stable public-facing connection code, distinct from Firebase UID.
+- The code must be unique, non-sensitive, easy to copy, and resolved through a controlled lookup.
+- A connection is active only after mutual participation/confirmation.
+- Prevent self-connection and duplicate active connections.
+- If a local person already represents the other user, link the existing person rather than creating a duplicate.
+- Show clear states: Not connected, Request sent/Pending, Incoming request, Connected, Declined, Disconnected.
+- A connection grants access only to the shared ledger and proposals for that connection.
+Connected transaction proposal lifecycle
+1. Sender creates a transaction in the global Add modal.
+2. The app stores a proposal with sender, recipient, connection ID, amount, date, direction, payment method context, note/tag as allowed, and audit timestamps.
+3. Recipient receives an in-app notification and can review the proposal.
+4. Until accepted, the proposal is separate from confirmed ledger totals for both parties.
+5. Recipient can accept or reject. Only the intended recipient can make this decision.
+6. Acceptance is performed through a trusted, atomic operation that creates/links one canonical shared event and prevents duplicate acceptance.
+7. Each account renders the same event from its own perspective. The event is not counted twice in either user's calculations.
+8. Rejection records the reason/status if provided; no confirmed balance changes occur.
+9. Accepted events cannot be silently edited or deleted by one party. Use correction/void requests with audit history and, where needed, approval by the other party.
+10. A local-only fallback must never mutate the recipient's account.
+Proposed statuses
+- pending
+- accepted
+- rejected
+- cancelled
+- expired_local_only
+- correction_pending
+- voided (only after the approved void workflow)
+Reminder policy
+- Immediately: notify recipient of a new proposal.
+- At 6 hours: notify sender and offer Continue waiting or Keep record on my side only.
+- At 12 hours and 24 hours: send a reminder only if still pending.
+- At 48 hours: if still pending, finalize on the sender's side only as expired_local_only, notify sender, and leave recipient's confirmed ledger unchanged.
+- Acceptance/rejection/cancellation/local-only finalization cancels future reminders.
+- A late response after local-only finalization must not convert the record to a shared event automatically. Show that it has already been finalized locally and require a new proposal if both parties still want to record it as shared.
+- “Continue waiting” leaves it pending until the recipient responds or the 48-hour fallback applies.
+Critical architecture requirement: browser timers cannot guarantee a deadline if the app is closed. Scheduled reminders and the 48-hour finalization need a trusted scheduled backend (for example, Firebase Cloud Functions plus a scheduler or an equivalent trusted service). Client-only JavaScript is not sufficient. Keep the rest of the app vanilla JS if desired; document this as a deliberate, limited backend addition.
+9. Statistics Page — stats12.html
+Purpose
+Turn recorded history into understandable patterns, not just a wall of charts.
+
+Retain the six sections already present in the current implementation; extract their exact names and formulas from source before rebuilding. Do not invent replacement section names without an explicit product decision.
+
+For every section, document:
+- Data sources.
+- Date range.
+- Filters.
+- Aggregation formula.
+- Chart/table type.
+- Empty state.
+- How transfers, fees, recurring schedules, pending proposals, and peer balances are treated.
+Recommended analytical principles
+- Separate spending from transfers and earnings.
+- Pending proposals do not count as confirmed historical transactions.
+- Do not count both a recurring schedule and an occurrence as spending.
+- Provide useful date ranges (week, month, custom range) if consistent with the existing design.
+- Explain unusual spikes with factual comparisons, not psychological diagnosis.
+- Show trends as estimates where data is incomplete.
+- Include payment-method comparisons after custom methods are added.
+- Keep the user's data private; no analytics are shared with connected people.
+10. Settings Page — settings.html
+Settings is the control centre, not the place users should need to visit for every routine transaction.
+Sections
+1. Profile and account: display name and account actions.
+2. Appearance: dark/light theme.
+3. Budget: direct/calculated/none modes, daily budget, monthly income, fixed expenses, savings, emergency allocation, and buffer percentage.
+4. Payment methods: built-ins plus up to 10 custom methods; add, rename, archive, method type, usage count.
+5. Expense categories and types: add/edit/hide defaults where supported.
+6. Transaction tags: manage tags.
+7. People: manage local people and view connection state.
+8. Earning sources: add/rename/archive sources.
+9. Data and migration: export backup, import backup, import history/report, backup format/version.
+10. Privacy and sharing: manage/revoke share links, connection permissions and disconnection.
+11. Feedback/reporting: preserve the existing feedback/issue-report workflow.
+12. Danger zone: reset/delete actions with clear consequences, re-authentication if appropriate, and explicit confirmation.
+Settings behavior
+- Show save status and validation errors.
+- Distinguish unsaved edits from saved values.
+- Warn before archiving a payment method/source/tag used by historical records.
+- Do not reset user data when changing budget or theme.
+- A reset must clearly distinguish resetting preferences from deleting all financial data.
+- Keep destructive actions separated from routine settings.
+11. Public Share View — share_view.html
+Retain the current shareable ledger concept for local people.
+- Resolve a high-entropy share token through a controlled lookup.
+- Display only the intended person's ledger from the counterparty's perspective.
+- Escape all user-provided strings; never inject names, tags, or notes as raw HTML.
+- Allow only explicitly supported request submissions.
+- Include invalid, revoked, expired (if expiry exists), loading, and error states.
+- Support owner revocation.
+- Do not reuse old tokens during migration by default.
+- Review existing Firestore public-read rules carefully; a hard-to-guess URL is not a replacement for access control.
+- Do not expose owner UID, email, unrelated records, or internal collection paths unnecessarily.
+- The authenticated connection ledger is distinct from this public view; a share link must not bypass connection approval.
+12. Shared JavaScript Architecture
+Preserve the existing vanilla HTML/CSS/JS structure unless a specific requirement justifies a change. Keep Firebase Auth and Firestore as the core services.
+Recommended shared modules
+The existing _shared.js can be gradually organized into clear responsibilities without requiring a framework:
+- Firebase initialization and authenticated-user state.
+- Common navigation/theme shell.
+- Currency/date formatting.
+- Firestore data access helpers.
+- Payment-method registry and legacy name mapping.
+- Expense/earning/transfer/transaction validation.
+- Financial calculation functions.
+- Global Add modal state machine and workflow definitions.
+- Unified List normalization/filter/sort/pagination.
+- Toast, confirmation, accessible modal, and error handling.
+- Backup export/import validation and migration orchestration.
+- Notification inbox UI.
+- Audit/event helpers.
+Avoid implementing four independent versions of the same fee, balance, validation, or payment-method logic. Business logic should be testable as pure functions wherever possible.
+Data loading and performance
+- Avoid loading every expense for every dashboard render.
+- Use bounded queries and pagination for large histories.
+- Cache settings and method configuration within the current authenticated session, then invalidate affected caches after writes.
+- Use real-time listeners only where they materially improve proposal/notification status; detach listeners when no longer needed.
+- Use batched writes for imports where limits permit; chunk large imports and track progress.
+- Treat offline state explicitly. Do not report a write as saved until Firestore confirms it.
+- Use stable IDs and deterministic sorting.
+13. Proposed Firestore Data Model
+This section proposes extensions, not a claim that these paths already exist. Preserve existing collections and field meanings during migration wherever possible.
+Existing user-owned data (preserve)
+- users/{uid}/settings/main
+- users/{uid}/expenses/{expenseId}
+- users/{uid}/recurringExpenses/{recurringId}
+- users/{uid}/earnings/{earningId}
+- users/{uid}/transfers/{transferId}
+- users/{uid}/openingBalances/current
+- users/{uid}/sources/{sourceId}
+- users/{uid}/people/{personId}
+- users/{uid}/transactions/{transactionId}
+- users/{uid}/shareLinks/{shareLinkId}
+- users/{uid}/pendingRequests/{requestId}
+Preserve existing fields such as amount, totalAmount, payMethod, chargeApplied, chargeAmount, chargeRate, sourceDeducted, isOpening, personId, and timestamps until the current code has been traced and compatibility tests pass.
+New or extended documents
+Payment methods
+users/{uid}/paymentMethods/{methodId}
+{
+  name: "EBL",
+  type: "bank", // cash | mobile_money | bank | credit_card | other
+  isBuiltIn: false,
+  isActive: true,
+  createdAt: Timestamp,
+  updatedAt: Timestamp,
+  legacyNames: []
+}
+Built-in IDs should be stable and reserved. A method's display name is not its identity.
+Migration history
+users/{uid}/migrationJobs/{migrationId}
+{
+  format: "eco-backup",
+  formatVersion: 1,
+  sourceExportedAt: "...",
+  status: "validating", // validating | importing | verifying | completed | partial | failed | rolled_back
+  startedAt: Timestamp,
+  completedAt: Timestamp | null,
+  countsExpected: {},
+  countsImported: {},
+  countsSkipped: {},
+  countsFailed: {},
+  sourceFingerprint: "...",
+  errorSummary: null
+}
+Do not store the entire backup redundantly in the migration job.
+Stable source mapping
+users/{uid}/migrationJobs/{migrationId}/mappings/{mappingId}
+
+Store source collection, source document ID, target collection/document ID, and outcome so retries are idempotent.
+User directory / public code
+Use a minimal controlled directory document keyed by a normalized unique code, mapping to a UID and safe display information. Never allow clients to write arbitrary UID mappings. Do not expose email or private account data through code lookup.
+Connections
+A canonical connection document should identify both participants, status, creation/activation timestamps, and the participant-local person IDs. Both users' access should be restricted to the connection and explicitly shared events.
+Transaction proposals
+A proposal record should include:
+- connectionId
+- senderUid
+- recipientUid
+- senderPersonId
+- recipientPersonId
+- status
+- amount, date, direction, paymentMethodId or approved snapshot, tag, note
+- createdAt, updatedAt, expiresAt
+- decisionAt, decisionBy
+- finalizedLocalAt when applicable
+- idempotencyKey
+- canonical sharedEventId after acceptance
+- audit metadata
+The exact path can be connection-scoped or top-level, but rules must prove that only the participants can read the record and only the recipient can accept/reject it.
+Canonical shared event
+Create one canonical event for an accepted shared transaction, with a unique event ID and a reference to the originating proposal. Each user's UI renders the event from their own perspective. Do not create two independent confirmed events that both represent the same event in the same ledger calculation.
+Notifications
+users/{uid}/notifications/{notificationId}
+
+Store type, related entity ID, created/read timestamps, and a minimal safe message payload. Notifications are UI records; they do not themselves authorize financial changes.
+Audit log
+Use an append-only audit trail for connection activation, proposal decisions, local-only finalization, corrections, and voids. Restrict writes to trusted operations where the action affects both users.
+Data-model rule
+Avoid a full rewrite of historical records solely to make the new UI easier. Use adapters/mappings at read time where safe, and run explicit, versioned migrations only when necessary.
+14. Financial Rules and Calculation Integrity
+Financial logic is the highest-risk area. Before coding, extract formulas from the current source and establish golden test cases. Do not use the following conceptual rules as a substitute for that source audit.
+Core distinctions
+- Expense: reduces the relevant wallet balance and contributes to spending statistics.
+- Earning: increases the selected wallet and contributes to earnings.
+- Transfer: moves money between wallets; it is neither new income nor spending. A qualifying fee may be counted according to the established rules.
+- Peer transaction: affects the relevant wallet movement and receivable/payable ledger according to the existing give/take semantics.
+- Pending shared proposal: has no effect on confirmed balances.
+- Accepted shared event: is represented once and interpreted from each participant's perspective.
+- Local-only fallback: affects only the sender's local ledger after explicit choice or the 48-hour timeout.
+Wallet total versus net/actual balance
+Keep these separate in labels and explanations. The existing project context records a historical test case:
+- Opening balances: Cash ৳1,040; bKash ৳8,000; Nagad ৳0.
+- Before lending: wallet total and net total are ৳9,040.
+- User lends ৳500 via bKash.
+- Expected wallet total remains ৳9,040 under the previously intended receivable interpretation; net/actual total becomes ৳8,540 under that specific historical expectation.
+This case must be reconciled with the exact current implementation and ledger convention before release. The blueprint must not “fix” it by guessing. Add custom wallets to the same verified calculation engine.
+Calculation safeguards
+- Use numeric values internally; format currency only for display.
+- Define rounding at the calculation boundary.
+- Preserve historical fee values on transfers.
+- Handle 0% fee as a valid value.
+- Define whether dates are local calendar dates and avoid UTC conversion off-by-one errors in Bangladesh time.
+- Ensure peer principal and fees are not double-counted.
+- Pending proposals never appear in confirmed statistics.
+- Regression-test old and new records together.
+15. Notifications, Reminders, and Background Processing
+Every signed-in user has a notification bar/inbox, accessible from the application shell on desktop and mobile. The bell should show an unread indicator/count, open a chronological list, and link each item to the relevant activity or action.
+15.1 Notification inbox rules
+- Show only notifications from the last seven days.
+- Notifications older than seven days are automatically deleted; they are not merely hidden forever in the UI.
+- Define retention using a trusted creation timestamp (createdAt) and a consistent server-side cutoff. A scheduled cleanup job should delete expired notification documents in bounded batches.
+- The client may filter the visible list to the seven-day window for immediate UX, but client filtering alone does not satisfy automatic deletion.
+- Mark-as-read changes notification metadata only; it must not accept, reject, create, or edit a financial transaction.
+- Sort newest first. Provide useful empty, loading, offline, and failure states.
+- Notifications are informational pointers, not proof that a financial event was accepted or completed. Always re-read and validate the linked proposal/event before enabling actions.
+- Keep notification payloads minimal. Do not put sensitive ledger details or another user's full transaction history into a push payload.
+- If an event is older than seven days, its notification is removed, but the underlying financial record or proposal follows its own retention/status policy. Notification cleanup must never delete a transaction.
+Suggested document shape:
+{
+  "type": "transaction_proposal_received",
+  "title": "A transaction needs your review",
+  "body": "Review a proposed shared transaction in EcO.",
+  "createdAt": "Firestore Timestamp",
+  "readAt": null,
+  "relatedType": "transactionProposal",
+  "relatedId": "proposal-id",
+  "expiresAt": "Firestore Timestamp"
+}
+This is a proposed notification schema, not a claim about existing stored fields. The seven-day expiration can be calculated by a trusted backend as createdAt + 7 days. Use Firestore TTL only if the deployed database supports and has TTL configured for the chosen expiration field; otherwise use a scheduled cleanup function. Do not rely on browser timers, because the user may close the app or remain offline.
+15.2 Notification types
+Potential in-app notifications include:
+- Connection request received, accepted, or declined.
+- Shared transaction proposal received.
+- Shared transaction accepted, rejected, cancelled, or corrected.
+- A reminder that a transaction proposal is waiting for review.
+- A transaction finalized as sender-only/local after the 48-hour response window.
+- A correction/void request update.
+- Import completed or failed.
+- Optional security notices such as a newly created share link.
+Do not create repetitive notifications for every refresh or every read. Use deterministic event IDs/idempotency keys so retries cannot flood a user's inbox.
+15.3 Scheduling and trusted execution
+Scheduled reminders, automatic 48-hour finalization, and seven-day deletion require a trusted scheduler/backend or a correctly configured managed TTL mechanism. A browser-only timer is not reliable enough. Every scheduled task must re-check the current state, be idempotent, and do nothing if the proposal was already resolved, cancelled, or otherwise changed. Cross-account financial state changes must use trusted atomic operations.
+15.4 WhatsApp money reminder for people who are not mutually connected
+When a user has lent money to a person who is not mutually connected on EcO, the lender may optionally create a WhatsApp reminder. This is a user-initiated communication tool, not an automatic message sender.
+User flow
+1. From the relevant person/loan detail or transaction row, the lender chooses Remind via WhatsApp.
+2. EcO asks for or uses the person's WhatsApp phone number. Validate country code/number format and show the full number for confirmation before opening WhatsApp. Do not require a number to record the loan.
+3. Generate a personalized, formatted message from the verified transaction/person context. The wording should be polite, factual, and non-threatening, for example:
+   Hi [person name], just a friendly reminder from [lender name] about the ৳[amount] I lent you on [date]. When convenient, could you please let me know when I can expect repayment? Thank you.
+4. Show a preview with an editable message field. The lender can change the wording, amount reference, or greeting before sending.
+5. The explicit action button should say Copy message & open WhatsApp or similarly unambiguous wording.
+6. On click, copy the message to the clipboard and open a WhatsApp chat deep link for the confirmed phone number. Use an encoded https://wa.me/<countrycodephonenumber>?text=<URL-encoded-message> URL when supported by the browser/platform.
+7. WhatsApp may prefill the message in the chat composer, depending on device/browser behavior. The user must review and press WhatsApp's own Send button. EcO must not claim it can automatically paste/send in all environments, and it must never send a message without the user's deliberate action.
+8. If clipboard access fails or is blocked, show the message in a selectable text area with a Copy message fallback and still offer to open WhatsApp.
+9. After returning to EcO, the user may optionally record “Reminder opened/sent by me” as a private local status. Do not mark the debt as repaid or the reminder as delivered merely because WhatsApp opened.
+Message and privacy rules
+- Do not send WhatsApp messages from the EcO backend or pretend the message was sent by an official EcO account. The message may be branded in a transparent way such as “A reminder from [lender name] using EcO”; it must not impersonate EcO support or a system notification.
+- The lender chooses whether to open WhatsApp and whether to send.
+- Do not expose the lender's other financial records, the recipient's account data, or a public share token in the message.
+- Allow the user to edit the text and verify the recipient number before opening WhatsApp.
+- Avoid repeated or harassing reminders. Provide a simple last-reminder timestamp/cooldown and let the lender decide when another reminder is appropriate.
+- Phone numbers are personal data. Store them only if necessary, explain why, protect them with access rules, and provide edit/delete controls. Prefer per-person optional contact details rather than making them mandatory for all people.
+- If the person is mutually connected on EcO, guide the lender toward the in-app notification/proposal workflow instead. Do not silently send both a WhatsApp message and an EcO notification for the same action.
+15.5 Connected-user notifications
+If both people have EcO accounts and have established a mutual connection, use an in-app notification for the intended recipient when a shared transaction proposal or other supported event requires their attention.
+- Notify the recipient only after the trusted backend confirms the proposal was created for the correct active connection.
+- A notification does not mean the recipient has accepted the proposal. Pending proposals do not change the recipient's confirmed balance.
+- The recipient can open the notification, inspect details, and explicitly accept or reject the proposal.
+- For a confirmed, accepted shared event, notify each participant only where useful and avoid duplicate alerts.
+- Browser/system push is optional and permission-based. The in-app inbox remains the source of truth.
+Delivery levels
+- In-app notification record: required.
+- Bell/inbox and unread count: required.
+- Seven-day automatic cleanup: required; use managed TTL or scheduled backend cleanup.
+- Real-time refresh: useful for active sessions; use listeners only where valuable and detach them correctly.
+- Scheduled reminders/deadlines: require trusted scheduled execution.
+- Browser push: optional enhancement; never the only notification mechanism.
+16. Security, Privacy, and Reliability
+- Require authentication for private financial data.
+- Enforce user ownership in Firestore rules, not just UI logic.
+- Prevent clients from assigning themselves another user's UID or connection identity.
+- Validate connection code lookup through controlled backend/rules design.
+- Only participants can read a connection/proposal/shared event.
+- Only the intended recipient can accept/reject a proposal.
+- Use trusted atomic operations for connection activation, acceptance, duplicate prevention, timeout finalization, and cross-user changes.
+- Never allow a pending proposal to alter the recipient's balance.
+- Keep unrelated expenses, earnings, wallets, settings, and full account history private.
+- Use safe DOM text rendering and avoid raw HTML injection from names, descriptions, tags, and notes.
+- Use high-entropy share tokens; provide revocation and least-privilege rules.
+- Rate-limit or otherwise protect public request endpoints where applicable.
+- Confirm destructive operations and keep audit history for shared events.
+- Provide clear error states for permission denied, offline, malformed imports, and partial failures.
+The current app is documented as mostly client-side. The proposed cross-account approval and scheduled timeout features require limited trusted backend functionality. This must be stated honestly in the architecture and deployment plan.
+17. Data Export, Import, and Migration Strategy
+Export
+Provide Settings → Data & Migration → Export Backup. Export all supported user-owned data and settings, including original IDs and timestamps, with:
+- format identifier/version;
+- export timestamp;
+- record counts;
+- completeness flag;
+- consistent timestamp serialization;
+- no auth tokens or secrets;
+- explicit notes about data that cannot be exported (for example, internal server-only audit details).
+The export must not depend on which List filters are active.
+Import
+Use the first-launch existing-user flow, and also allow future imports from Settings. Import must:
+1. Parse locally.
+2. Validate format/version and schema.
+3. Show preview/warnings.
+4. Require authentication.
+5. Require confirmation.
+6. Run idempotently in chunks.
+7. Record migration job status.
+8. Verify counts and core financial totals.
+9. Present a report.
+10. Never overwrite unrelated data silently.
+Exact legacy field and semantic mapping requirements
+The eco-backup v1 contract exports data.settings as an array of {id, fields} records (normally one record with ID main) and data.openingBalances as an array (normally one record with ID current). Do not treat either as a plain object or null.
+- Preserve the original record ID and every original field until validation is complete.
+- transactions.type values are give and take; records with isOpening: true have inverted meaning in the legacy UI logic. Test this explicitly rather than applying the normal transaction rule to opening entries.
+- Preserve amount separately from totalAmount. Preserve chargeApplied, chargeAmount, and chargeType as distinct historical facts.
+- Resolve transaction-person relationships by personId first, then fall back to the person name only when the ID cannot be resolved. The people document IDs are the targets of personId.
+- Preserve fromRequest and linked-transaction fields where present. A backup may include fields newer than the list of known fields.
+- Tagged Firestore values can occur anywhere inside nested objects/arrays. Do not restore only top-level timestamps.
+- Do not expect old public share tokens: shareLinks.fields.hash is null, and an ID may be a redacted-<n> placeholder.
+- The backup excludes cross-account collections and the other user's counterpart transaction. Importing a file cannot by itself restore old mutual connections or reconstruct a missing counterpart copy.
+- Keep the backup file unchanged. Perform every compatibility transformation in a versioned import adapter and retain a migration report describing warnings and mappings.
+Mapping old to new
+- Map Cash, bKash, and Nagad to stable built-in payment method IDs.
+- Preserve unknown payment method names as unresolved legacy values for user review; do not map them to a random built-in method.
+- Preserve old document IDs when no collision exists; otherwise map old IDs to new IDs and retain source references.
+- Preserve person references and update references only through an explicit mapping table.
+- Preserve old fee amounts/rates, dates, and historical transaction direction.
+- Import settings carefully: new defaults fill missing fields only; they must not replace present old settings.
+- Recreate share links only after user consent; do not automatically activate legacy public tokens.
+- Connected-user data from the old version should not be inferred from local person names.
+Verification report
+Show expected/imported/skipped/failed counts, duplicate handling, unresolved records, and checksums/totals where useful. Do not claim success solely because writes returned without error; perform a post-import read/verification.
+18. Page-by-Page Responsibility Summary
+Page	Primary responsibility	What it should not become
+First-launch onboarding	Identify new vs legacy user; guide safe JSON import	A permanent gate shown every visit
+Dashboard (index.html)	Today's overview, budget, wallet snapshot, pending actions, Add entry point	A duplicate full activity history
+List (list12.html)	Unified searchable/filterable history for all activity types	A place that duplicates records into a new collection
+Statistics (stats12.html)	Trends, spending analysis, category/method comparisons	A source of truth for transactions
+Wallets (wallet12.html)	Account balances, opening balances, account-level explanation	A separate competing transaction-entry system
+Transactions (transaction12.html)	People, local ledgers, connections, proposals, receivables/payables	Access to another user's whole account
+Settings (settings.html)	Budget, categories, tags, sources, payment methods, theme, backup, privacy	The only place to perform routine Add activities
+Public share (share_view.html)	Restricted counterparty ledger and allowed requests	A bypass around authenticated connection security
+Shared utilities (_shared.js)	Common state, calculations, validation, UI helpers, data adapters	A dumping ground with duplicated business logic
+Trusted backend functions	Atomic cross-account decisions and scheduled deadlines	A replacement for all client-side app logic
+
+
+19. Recommended User Journeys
+Daily spending (fast path)
+Dashboard/List/any page → + Add → Expense → Daily Expense → date/type → payment method/amount/description → Save → success → updated budget and List.
+Monthly income
+Any page → + Add → Earning → date/source (create source inline if needed) → receiving wallet/amount/description → Save → updated wallet and earnings statistics.
+Moving money
+Any page → + Add → Transfer → date → From/To/amount/note → review fee preview → Transfer Now → wallet balances update, spending/income totals remain correct.
+Lending or borrowing from a local person
+Any page → + Add → Transaction → date/person/tag (create inline if needed) → Give/Take/payment method/amount → Save → person's ledger and balance summaries update.
+Recording with a connected EcO user
+Choose connected person → create proposal → pending state and notification → recipient reviews → accept/reject → trusted canonical event updates both perspectives exactly once.
+Importing old data
+First launch → existing user → choose JSON → preview/validate → sign in → confirm → progress → verification report → Dashboard with imported history.
+Reviewing behaviour
+Dashboard → notice a neutral spending insight → Statistics for detail → List filtered to the relevant period/category → make a practical budget adjustment in Settings if desired. The app should suggest reflection, not make diagnoses or shame the user.
+20. Implementation Roadmap
+Phase 0 — Audit and baseline
+- Read the latest actual HTML/JS/CSS/rules/indexes.
+- Trace all save/edit/delete paths and current formulas.
+- Capture desktop/mobile screenshots and build test fixtures.
+- Record exact current stats sections and recurring-expense semantics.
+- Establish golden tests for wallet total, net balance, Give/Take, fees, budgets, and date boundaries.
+Gate: current behavior is documented and regression tests exist.
+Phase 1 — Backup contract and migration
+- Implement/export the versioned JSON backup in the old version if not already available.
+- Implement new-version file validation, preview, import job, ID mapping, idempotency, and verification.
+- Test malformed, partial, duplicate, large, and retry scenarios.
+Gate: import preserves data and never silently duplicates or overwrites.
+Phase 2 — Shared payment-method registry
+- Add stable built-in IDs and custom method documents.
+- Migrate legacy strings safely.
+- Update all selectors and wallet calculations to use one registry.
+- Add archive/rename rules and opening-balance handling.
+Gate: all old balance tests pass with built-in and custom methods.
+Phase 3 — Global Add modal
+- Implement shared modal shell and state machine.
+- Move four workflows into it, reusing existing business logic.
+- Add inline creation for people, tags, and sources.
+- Add keyboard/accessibility/duplicate-submit behavior.
+Gate: each workflow works from every authenticated page.
+Phase 4 — Unified List
+- Normalize records from all existing collections into a display model.
+- Add filters, search, pagination, type-specific rows, and actions.
+- Retire redundant activity lists only after parity testing.
+Gate: all record types appear once, with correct filtering and edit/delete behavior.
+Phase 5 — Dashboard, Wallet, Statistics, Settings refinement
+- Connect dashboard summaries to verified calculation functions.
+- Add custom wallet cards and method-aware statistics.
+- Add data migration and backup controls to Settings.
+- Preserve existing six stats sections unless explicitly redesigned.
+Gate: no discrepancy between List, Wallet, Dashboard, and Statistics.
+Phase 6 — Connections and proposals
+- Design and test connection code, mutual request, authorization rules, proposal states, canonical shared events, corrections, and audit logs.
+- Add limited trusted backend operations for acceptance and scheduled timeouts.
+- Test concurrency, duplicate acceptance, recipient privacy, and late response behavior.
+Gate: shared events are authorized, auditable, and counted exactly once.
+Phase 7 — Security, performance, and release
+- Review Firestore rules and public share access.
+- Test XSS-safe rendering, large datasets, offline/retry paths, accessibility, and mobile layout.
+- Verify service worker/manifest and cache update strategy.
+- Deploy to a test Firebase project before production.
+- Provide rollback and backup instructions.
+21. Acceptance Criteria
+First launch and import
+- [ ] New user and existing user choices are clear.
+- [ ] Existing user can select a JSON backup.
+- [ ] Invalid/incomplete files are explained before import.
+- [ ] Preview displays record counts and warnings.
+- [ ] Import requires sign-in and explicit confirmation.
+- [ ] Repeating the same import does not duplicate records.
+- [ ] Existing settings and historical financial values are preserved.
+- [ ] Share tokens are not silently reused.
+- [ ] Post-import verification and report are available.
+Global Add
+- [ ] All four activity types are accessible from one global button.
+- [ ] All workflows use progressive steps and preserve entered values.
+- [ ] Enter key behavior is safe and predictable.
+- [ ] Duplicate submission is prevented.
+- [ ] Validation and errors are visible and actionable.
+- [ ] Successful saves update relevant app views.
+Unified List
+- [ ] All four activity types can be viewed together or filtered.
+- [ ] Type-specific fields are understandable.
+- [ ] Search/date/payment/category/source/person filters work.
+- [ ] Pagination prevents unbounded full-history loading.
+- [ ] Recurring schedules and occurrences are not double-counted.
+- [ ] Editing/deleting/correcting targets the correct source record.
+Payment methods
+- [ ] Cash, bKash, and Nagad remain built-in.
+- [ ] Up to 10 custom methods can be added.
+- [ ] Every selector uses the shared registry.
+- [ ] Rename/archive preserves historical readability.
+- [ ] New methods do not alter old balances.
+- [ ] Fee rules apply only to qualifying transfers.
+- [ ] Zero-percent fee remains zero.
+Connections
+- [ ] Connection requires mutual participation.
+- [ ] Duplicate/self connections are blocked.
+- [ ] Private account data remains private.
+- [ ] Pending proposals do not affect confirmed balances.
+- [ ] Only intended recipient can accept/reject.
+- [ ] Acceptance is atomic/idempotent and creates one canonical event.
+- [ ] Six-hour decision and 12h/24h/48h schedule behave correctly.
+- [ ] Local-only fallback never changes recipient data.
+- [ ] Corrections/voids are auditable.
+Overall quality
+- [ ] Desktop and mobile layouts are usable.
+- [ ] Loading, empty, offline, permission-denied, and error states are covered.
+- [ ] Financial regression tests pass.
+- [ ] Firestore rules are tested in a non-production project.
+- [ ] No known public read/write weakness is carried forward without review.
+- [ ] No user-provided text is inserted as unsafe HTML.
+22. Final Product Idea
+EcO should become a single, reliable daily money companion. The user records any financial activity through one consistent Add flow; understands all activity in one List; sees balances separated by account and by financial position; learns from Statistics without being shamed; and manages their own preferences in Settings. People who do not use EcO remain supported through local ledgers and carefully scoped share links, while EcO users can create mutual connections and approve shared transactions.
+
+The most important order of work is:
+1. Protect existing data first through a versioned JSON backup and verified import.
+2. Unify entry and history so the app feels simple and consistent.
+3. Centralize payment-method configuration without breaking old balances.
+4. Prove all financial calculations with regression tests.
+5. Add cross-account sharing only with trusted authorization and scheduling, because mistakes here can affect another person's financial records.
+The guiding promise should be: “Record money simply. Understand it clearly. Keep your data safe. Share only what you choose.”
+Blueprint update: reminders and inbox
+The Transactions experience includes an optional, user-reviewed WhatsApp reminder for a person who is not mutually connected on EcO. The application shell includes a notification bell/inbox for every signed-in user, with automatic deletion after seven days. See Sections 2.4, 15, and 17 for the exact legacy backup contract, message flow, privacy constraints, and retention requirements.
+23. Authoritative UI Design System — Institutional Emerald
+This section is binding for the generated interface and supersedes any older design descriptions above where they conflict.
+23.1 Design language
+- Product style: Institutional Emerald — dark-first, restrained, high-trust fintech terminal.
+- Dark-only. <html class="dark">. Do not create a light theme, light-theme tokens, or a theme switch.
+- No pure black or pure white. Use layered charcoal surfaces.
+- Emerald is the primary/action and positive semantic accent. Salmon is negative/error. Slate-blue/gray is neutral transfer. Pending uses a restrained tertiary treatment. Everything else is grayscale surface tiers.
+- Use high information density only where it genuinely helps (for example, transaction history), while maintaining consistent spacing and strong visual hierarchy.
+- Avoid decorative gradients, large empty hero areas, unnecessary illustrations, glowing effects, oversized cards, and repeated explanatory copy.
+23.2 Exact color tokens
+Token	Hex	Use
+background / surface	#111317	Page canvas
+surface-container-lowest	#0C0E12	Inset wells and search backgrounds
+surface-container-low	#1A1C20	Main card surface
+surface-container	#1E2024	Nested surfaces and chips
+surface-container-high	#282A2E	Hover/active chips and icon tiles
+surface-container-highest	#333539	Strong active surfaces and toast background
+primary	#73E3B4	Accent text, positive values, selected states, icons
+primary-container	#55C79A	Primary button fill
+on-primary	#003826	Text/icons on primary button
+error	#FFB4AB	Negative amounts and errors
+secondary	#BEC7D5	Transfers and neutral amounts
+on-surface	#E2E2E8	Main text
+on-surface-variant	#BCCAC1	Secondary text and labels
+outline-variant	#3D4943	Subtle borders
+outline	#87948C	Stronger dividers
+
+
+Use semantic tokens in CSS variables or Tailwind configuration rather than scattering hex values across components. Use accessible contrast and do not rely on color alone to communicate transaction type.
+23.3 Typography
+Use only two font families:
+- Inter for headings, body text, labels, navigation, and UI copy.
+- JetBrains Mono for all monetary values, IDs, timestamps, and tabular financial figures.
+Never render money in Inter or prose in JetBrains Mono unless the text is a deliberately tabular identifier/value.
+
+Suggested scale:
+Token	Size / line height	Weight	Tracking
+headline-xl	32/40 px	600	-0.02em
+headline-xl-mobile	26/32 px	600	-0.015em
+headline-lg	24/32 px	600	-0.015em
+headline-sm	18/24 px	500	-0.01em
+body-lg	15/22 px	400	normal
+body-md	13/18 px	400	normal
+body-sm	12/16 px	400	normal
+label-md	11/14 px	500	+0.04em
+label-lg	13/16 px	500	+0.02em
+data-mono-xl	24/28 px	500	-0.02em
+data-mono-lg	16/20 px	500	normal
+data-mono-md	13/16 px	400	normal
+data-mono-sm	11/14 px	400	normal
+
+
+Section eyebrow labels may use label-md, uppercase, tracking-wider, and on-surface-variant. Use the hero amount at a visually appropriate size, usually around 28–38 px on desktop and responsive down to mobile.
+23.4 Spacing, radii, icons
+Spacing:
+- space-xs: 4px
+- space-sm: 8px
+- space-md: 12px
+- space-lg: 16px
+- space-xl: 24px
+- Mobile page padding/gutter: 16px
+Deliberately restrained radius scale:
+- Default/badges: 2px
+- Buttons, inputs, chips: 4px
+- Cards/containers: 8px
+- Full-width containers/avatars: 12px
+Do not use pill-shaped rounded-full styling for cards. Use it only where a genuine circular avatar/status dot or a deliberately compact pill requires it.
+
+Use Google Material Symbols Outlined, typically 18–22px, weight 400. Keep iconography consistent.
+23.5 Semantic color rules
+- Income / positive amount: primary.
+- Expense / negative amount: error.
+- Transfer: secondary, with a bidirectional transfer glyph such as ⇄; do not misleadingly prefix it with plus/minus.
+- Give/Take ledger amounts: use clear directional labels and the appropriate receivable/payable status. Do not infer that every Give/Take record is pending.
+- Pending proposal: neutral/tertiary pending treatment with a textual “Pending” status.
+- Success and primary action are not interchangeable. Primary buttons use primary-container with on-primary text.
+- Status badges use a restrained tinted background and readable text, such as a semantic color at low opacity. Always include a text label where status matters.
+23.6 Minimal-by-default / progressive disclosure — entire product
+This is a product-wide rule, not a dashboard-only preference.
+
+Normal view should show only the essential data and direct information needed for the current task. Secondary explanations, calculations, audit metadata, optional metrics, history, and advanced controls appear only after a user asks for them.
+
+Apply this to:
+- Dashboard cards and summaries.
+- Wallet/payment-method rows.
+- Transaction rows and filters.
+- Statistics cards and charts.
+- People and personal ledgers.
+- Connection requests and proposals.
+- Notification inbox.
+- Settings.
+- Forms and dialogs.
+- Public shared-ledger pages.
+- Empty, loading, success, and error states.
+Rules:
+1. One card has one purpose.
+2. Show one primary value/title and only the label/context needed to interpret it.
+3. Remove redundant descriptions, duplicate headings, excessive badges, secondary metrics, and decorative statistics.
+4. Do not fill every available area with another card or chart.
+5. A click on a meaningful card/row opens its details. A small information icon explains a formula. An overflow menu contains secondary actions. A clear button handles important actions.
+6. Do not add “View details” buttons everywhere when the whole row/card already opens details.
+7. Do not hide information necessary for a safe financial decision. Fees and net received amounts must be shown before confirming a fee-bearing transfer; proposed amount/person/direction must be visible before accepting a proposal.
+8. Detail views may use a page, desktop side panel, mobile bottom sheet, or focused modal according to content size.
+9. Preserve the user's scroll position and filter context when returning from a detail view.
+10. Minimalism must not remove functionality; it changes what is visible by default.
+Examples of the intended normal view
+- Wallet: bKash + ৳ 4,500.00 + subtle chevron. No transaction count, masked phone number, income/expense totals, monthly change, or explanatory paragraph.
+- Person: Emon + current balance + clear “They owe you” / “You owe” direction. Full Give/Take history belongs in person details.
+- Transaction: concise title/category + amount + compact date/context. Note, ID, fee breakdown, tags, and metadata belong in transaction details.
+- Budget: remaining amount + simple progress bar + a short spending figure if it helps interpret the remaining amount. Full formulas and monthly allocation breakdown belong in budget details.
+- Net Total: amount and clear label. The calculation is available through a small information affordance/detail view.
+- Settings: compact grouped rows. Advanced controls appear after opening the relevant setting.
+23.7 Layout shell A — Desktop web dashboard
+- Fixed left sidebar: 240px (w-60).
+- Sidebar content: EcO logo/name, primary Add Entry action, primary navigation, user/profile footer.
+- Fixed top header: 56px high, offset to the right of the sidebar, subtle backdrop blur.
+- Header: search field (up to max-w-md, optional Ctrl+K hint if implemented), sync/connectivity state, notification bell, avatar. An active-wallet pill is optional only if it adds direct value.
+- Main content offset by sidebar and header, centered with max-w-7xl, sensible 16–24px padding.
+- Use a 12-column grid only where it improves scanning; do not force every section into a dashboard grid.
+- Active nav: elevated surface, primary text/accent, restrained left border.
+- No mobile bottom navigation on desktop.
+- On desktop, hover affordances may brighten borders or nudge a chevron slightly.
+23.8 Layout shell B — Mobile application
+- Fixed top header: 56px plus safe-area top inset.
+- Header content: EcO mark/name, current page title, small connectivity state, notification bell, avatar/menu as space allows.
+- Main content: top offset for header, bottom padding for bottom navigation, 16px horizontal page gutter.
+- Fixed bottom navigation: 64px plus safe-area bottom inset; five slots: Home, Ledger/List, central Add action, Wallets, People.
+- Central Add button is elevated but visually restrained and must not obscure content.
+- Never render the desktop sidebar on mobile.
+- Never render the bottom navigation on desktop.
+- All mobile layouts must respect env(safe-area-inset-top) and env(safe-area-inset-bottom).
+- Mobile screens should be re-composed, not merely scaled-down desktop screens.
+23.9 Layout shell C — Mobile Ledger/List
+Use the same mobile chrome as Shell B. The List content may include:
+- Compact month/date selector.
+- At most a few meaningful summary metrics; omit them if they add clutter.
+- Search and a horizontally scrollable row of filter chips.
+- Time-grouped transaction rows.
+- Expandable details or a focused transaction detail view.
+- Pagination or progressive loading when appropriate.
+- Export action inside a compact overflow/menu or toolbar.
+Do not show a dense analytics ribbon just because it is in the design reference. The minimal-by-default rule wins.
+23.10 Component specifications
+Cards
+- Main surface: surface-container-low.
+- Subtle outline-variant border at low opacity.
+- 8px radius.
+- Usually 12–16px padding.
+- No desktop shadow by default; restrained mobile elevation only if it improves separation.
+- Hover border change only for interactive cards.
+Hero balance
+Normal view:
+- Net Total label.
+- Main mono amount.
+- Wallet Total as a secondary, clearly labeled amount.
+- A small info affordance for the difference/calculation.
+Do not add a growth pill, “liquid wallets” panel, receivables row, valuation audit accordion, or additional comparison unless the user explicitly opens details. These can be included in a detailed financial overview, not the default hero card.
+Budget card
+Normal view:
+- Remaining daily budget.
+- Simple progress indicator.
+- One concise “spent today” figure when useful.
+- Optional compact status label only when it communicates a meaningful state.
+Hide formula details, cap percentages, and allocation breakdown in the budget detail view. Do not show a redundant “Inspect” link if the card itself opens details.
+Payment-method row/card
+Normal view:
+- Method name.
+- Current balance.
+- Subtle details affordance.
+Cash is the only default method. Do not show phone numbers or account numbers. Do not use bKash pink, Nagad orange, or brand-specific method colors. All methods share the same neutral icon/color system.
+People ledger summary
+Normal view:
+- One compact summary of receivables and payables, with unambiguous labels and amounts.
+- Do not add person counts, helper paragraphs, due-week claims, and duplicate badges unless they are useful and grounded in actual data.
+- Person-specific information belongs on the People page.
+Transaction row
+Normal view:
+- Small neutral/semantic icon.
+- Concise title/category.
+- Amount with correct semantic direction.
+- Compact date/context when useful.
+Do not put IDs, full timestamps, notes, fees, tag collections, status metadata, and multiple badges into the ordinary row. Show those in transaction details.
+Search and filter chips
+- Search field with icon and optional clear button.
+- Filter chips may scroll horizontally on mobile.
+- Active state is clear and accessible.
+- Do not fire fake success toasts; filter the actual results.
+- Keyboard shortcuts are optional and must work if displayed.
+Buttons
+- Primary: primary-container fill, on-primary text, 4px radius, concise label.
+- Secondary/ghost: surface-container background with subtle border.
+- Link action: primary text with a clear affordance.
+- Do not make every card contain multiple buttons.
+- Buttons must perform their stated action.
+Toasts and confirmation
+- Use short toast feedback for completed non-destructive actions.
+- Do not claim an action succeeded until the actual operation succeeds.
+- Confirmation is required for destructive actions and consequential data changes.
+- Do not follow the older blanket instruction “No confirmation modals”. That instruction is overridden: use appropriate confirmation for delete/reset/restore/void and other high-impact operations. Use inline feedback for ordinary filter changes or low-risk actions.
+- Toasts must be accessible, dismissible where appropriate, and not obscure important controls.
+Expandable transaction details
+- Provide a real button/keyboard-accessible disclosure, not only a row onclick.
+- Include aria-expanded, keyboard support, and clear focus styles.
+- Details may include transaction ID, note, status, fee, tags, wallet/person references, and audit data.
+- Never inject user-supplied content with unsafe innerHTML. Use safe DOM/text rendering.
+23.11 Currency, dates, and locale
+- Currency: Bangladeshi Taka, ৳.
+- Two decimal places for stored monetary values and financial calculations.
+- Use Indian/Bangladeshi digit grouping where specified by the product, e.g. ৳ 1,62,450.00, not ৳ 162,450.00. Use a tested formatter; do not manually concatenate separators.
+- Timezone: Asia/Dhaka (UTC+6).
+- Keep date-only values as date-only strings where the data model requires them; do not shift a date by converting it carelessly through UTC.
+- Use Inter for labels and JetBrains Mono for money/timestamps/IDs.
+- Use concise date labels such as “Today” in normal views; full timestamps belong in details.
+23.12 Payment-method domain model and duplicate naming
+- New account starts with a single Cash method.
+- Every additional method is user-created.
+- Do not require a phone/account number.
+- Suggested record shape (adapt to the actual architecture without breaking legacy import):
+  - stable id
+  - name
+  - optional type metadata
+  - isDefault or equivalent
+  - archived status
+  - creation/update metadata where appropriate
+- Optional type metadata must not dictate brand colors.
+- Duplicate names are allowed as distinct records. Generate display names Name, Name~2, Name~3, etc.
+- Duplicate matching should ignore case and surrounding whitespace when deciding whether a name is a duplicate.
+- Preserve stable IDs and references. Renaming a method must not silently rewrite historical transactions or change which record they reference.
+- Avoid physical deletion when historical records depend on a method; offer archive/disable or a safe migration.
+- On import, inspect the legacy opening balance fields and transaction payMethod values. Create/restore only the payment methods represented in the imported backup. If bkash is present but nagad is absent, do not add Nagad. If both are present, restore both. If the backup has only Cash, keep only Cash. Do not infer method existence merely from a generic capability list.
+- Historical references such as legacy names must be mapped deterministically to the correct method IDs. Show any ambiguous mapping in the import preview and require resolution rather than guessing.
+- Do not show masked example phone numbers in sample UI.
+23.13 Interaction patterns
+- Interactive element states: default, hover/focus, pressed, disabled, loading, success/error as relevant.
+- Touch feedback must not rely on fragile global event handlers alone; use CSS :active and proper button semantics.
+- Dropdowns close on outside click and Escape; controls are keyboard accessible.
+- Progress animations should be subtle and respect reduced-motion preferences.
+- Live sync indicators must reflect real connection/sync state; do not show “Online • Synced” as decorative fiction.
+- Search, filters, sort, pagination, export, and detail toggles must actually work.
+- Prefer event listeners and modular functions over inline onclick attributes.
+- Use aria-label, labels for inputs, logical focus order, and visible focus styles.
+- Respect prefers-reduced-motion.
+24. Implementation Architecture and File Delivery Contract
+Generate a coherent multi-file project. Adapt filenames if there is a compelling reason, but keep page entry points understandable and document every change.
+
+Suggested structure:
+eco/
+  index.html                 # auth entry + dashboard shell
+  onboarding.html            # first-use and legacy-import flow
+  list.html                  # unified activity list
+  stats.html                 # statistics and insights
+  wallets.html                # payment methods and balances
+  people.html                 # people list and personal ledgers
+  connections.html            # EcO-to-EcO requests/proposals, if separated
+  settings.html               # settings, backup/restore, management
+  share_view.html             # public read-only share view
+  assets/
+    css/
+      tokens.css
+      base.css
+      layout.css
+      components.css
+      pages.css
+    js/
+      firebase-config.example.js
+      firebase-init.js
+      auth.js
+      app-shell.js
+      state.js
+      data/
+        repository.js
+        expenses.js
+        earnings.js
+        transfers.js
+        wallets.js
+        people.js
+        transactions.js
+        notifications.js
+        migration.js
+        backup.js
+      domain/
+        money.js
+        dates.js
+        calculations.js
+        payment-methods.js
+        validation.js
+      components/
+        add-flow.js
+        modal.js
+        toast.js
+        confirm.js
+        filters.js
+        transaction-row.js
+      pages/
+        dashboard.js
+        onboarding.js
+        list.js
+        stats.js
+        wallets.js
+        people.js
+        connections.js
+        settings.js
+        share-view.js
+  manifest.json
+  sw.js
+  FIREBASE_SETUP.md
+  DATA_MODEL.md
+  TEST_PLAN.md
+  README.md
+This is a suggested organization, not permission to create empty placeholder files. Every delivered file must have a clear purpose. Avoid duplicated calculation logic between pages.
+Engineering rules
+- Use ES modules and a shared data/domain layer.
+- Centralize money formatting, date handling, financial calculations, payment-method resolution, validation, and error handling.
+- Separate presentation from data access.
+- Use a single source of truth for configured methods, categories, income sources, people, and settings.
+- Keep all reads/writes behind repository functions; UI code should not scatter Firestore paths everywhere.
+- Avoid global mutable state where practical. If shared state is used, document its shape and update strategy.
+- Use a consistent loading/error/empty state component.
+- Avoid unbounded reads. Use pagination or bounded queries for long transaction history.
+- Do not rely on a full collection scan for every dashboard refresh.
+- Do not use onSnapshot automatically everywhere. Choose realtime subscriptions only where they have a clear UX need and ensure listeners are unsubscribed. Otherwise use deliberate fetch/refresh behavior.
+- Use Firestore batches/transactions where supported and appropriate; remember client-side Firestore transactions are not a substitute for trusted cross-user authorization.
+- Use deterministic/idempotent operations for migrations and notification event creation.
+- Sanitize/escape all user-generated text. Avoid unsafe HTML insertion.
+- Do not store secrets or privileged credentials in localStorage or client code.
+- Use semantic HTML and keyboard-accessible controls.
+- Keep PWA manifest, service worker, installability, offline behavior, and cache strategy explicit. Do not cache private financial responses in a way that exposes one user's data to another user on a shared device.
+- Explain limitations rather than shipping misleading controls.
+24.1 Firebase configuration boundary
+Create a clear file/template such as assets/js/firebase-config.example.js:
+// Replace these placeholders with the Firebase Web App configuration
+// supplied manually by the project owner. Do not put service-account
+// credentials or Admin SDK secrets in browser code.
+export const firebaseConfig = {
+  apiKey: "PASTE_YOUR_FIREBASE_WEB_API_KEY",
+  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_STORAGE_BUCKET",
+  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID",
+  appId: "PASTE_YOUR_FIREBASE_APP_ID"
+};
+This is a placeholder, not working credentials. Keep initialization isolated. If values remain placeholders, show a helpful setup error rather than endlessly loading or falsely showing an authenticated state.
+
+The owner will add the actual Firebase details manually.
+24.2 Firebase rules, indexes, and security are owner-managed
+Do not attempt to apply Firebase Rules or create indexes through the generated browser application. Instead produce FIREBASE_SETUP.md with:
+- Every collection/document path the app reads or writes.
+- Every query shape that may require a composite index.
+- A proposed least-privilege rules design and a clear note that the owner must review/paste/deploy it manually.
+- Authenticated-user ownership requirements for users/{uid}/....
+- Explicitly defined access for connection invitations, mutually approved connections, proposals, shared records, public share views, and void/correction requests.
+- No broad public reads of private transactions, share-link records, or documents exposing owner UIDs.
+- Public share access only through high-entropy, unguessable tokens and a minimal read-only projection; never expose an entire private collection by accident.
+- Rules emulator test scenarios for allowed and denied reads/writes.
+- Manual steps for index deployment and handling missing-index errors.
+- A clear statement that client-side checks are not security enforcement.
+Do not make rules “open” to bypass permission errors. If the current design requires privileged atomic cross-account operations, document the required trusted backend function/API and do not simulate it with unsafe direct writes.
+24.3 Trusted backend boundary
+Some features need a trusted backend or managed scheduled service:
+- atomic acceptance/finalization of cross-account transaction proposals;
+- secure creation/validation of share tokens if it requires privileged checks;
+- scheduled notification deletion after seven days;
+- 48-hour proposal expiry/finalization;
+- any action that must run while no user's browser is open.
+Design client interfaces and documented callable contracts for these features. Do not claim they work end-to-end until the owner configures the required backend. If backend code is requested later, keep it separate from client code and never expose credentials.
+25. Page-by-Page Implementation Requirements
+The product blueprint earlier in this file defines the user journeys, fields, calculations, and data compatibility. These page requirements explain how to implement the entire site while preserving the minimal Institutional Emerald UI.
+25.1 Auth entry and Dashboard (index.html)
+- Handle signed-out, loading, authenticated, and auth-error states.
+- The signed-out state offers Firebase sign-in options supported by the project owner's configuration.
+- After authentication, check whether first-launch onboarding/migration is complete.
+- Dashboard normal view: Net Total, Wallet Total, remaining daily budget, compact wallet balances, recent activity, and concise receivable/payable summary.
+- Avoid showing all metrics at once. Each major number can open a relevant detailed view.
+- Include one prominent global Add (+) action.
+- Do not invent “growth vs last month” or other insights unless the calculation and data support it.
+- Do not display fake sync status.
+25.2 Onboarding and migration (onboarding.html)
+- New user vs previous EcO user.
+- Local JSON selection, parse/validate, preview, explicit confirmation, idempotent import, progress, verification report.
+- Do not overwrite data silently.
+- Cash-only default for a truly new user.
+- Existing user import restores only methods actually represented by the backup and preserves historical references.
+- A backup with legacy opening-balance fields cash, bkash, nagad needs careful mapping to the new payment-method model. Do not lose historical balances or create absent methods.
+- Settings from import take precedence over setup defaults; fill only genuinely missing preferences.
+25.3 Unified Add (+) workflow
+One entry point, adaptive steps:
+- Expense
+- Income/Earning
+- Transfer
+- Give
+- Take
+Only show fields relevant to the selected type. Use progressive disclosure for notes and advanced options.
+
+Expense: amount, category, payment method, date, optional note/description.
+
+Income: amount, source, destination payment method, date, optional note.
+
+Transfer: source method, destination method, amount, applicable fee/rate and net amount received before confirmation. Preserve old fee fields for historical transfers; never recompute history from current rates.
+
+Give/Take: person, amount, direction, payment method where relevant, date, optional note/tag, and only the fields required by the established ledger model.
+- Validate positive finite amounts and required fields.
+- Prevent transfer from and to the same method unless the original semantics explicitly allow it.
+- Explain a fee before committing.
+- Keep Save/Cancel obvious.
+- Prevent accidental double submission.
+- Show success only after Firestore confirms the write.
+- After save, refresh only the relevant data or update a well-defined cache.
+- Support keyboard and mobile one-handed use.
+25.4 Unified List (list.html)
+- One searchable/filterable activity history across supported activity types.
+- Filter by date range, transaction type, payment method, category (where applicable), and person (where applicable).
+- Search and filters must operate on actual data, not just visual chips.
+- Compact rows: title/category, amount, concise date/context. Full metadata is in details.
+- Group by day when it improves scanning.
+- Use bounded queries/pagination; do not load every expense forever.
+- Empty state, no-results state, loading, offline, and permission-denied states.
+- Export controls must do real work or be clearly disabled with an explanation.
+25.5 Statistics (stats.html)
+Maintain the established six-section stats concept unless source verification shows otherwise:
+1. Overview.
+2. Category analysis.
+3. Trends.
+4. Budget analysis.
+5. Income/expense.
+6. Insights.
+Normal view shows a concise period summary and one useful visualization/summary at a time. Deeper breakdowns are on demand. Do not fabricate comparisons, percentages, or data points. Correctly handle no data, zero denominators, date boundaries, recurring expenses, and category changes.
+25.6 Wallets / payment methods (wallets.html)
+- Cash exists by default; other methods are user-created.
+- One unified payment-method color/icon system.
+- Normal list shows method name and current balance only, with a subtle details affordance.
+- Details contain opening balance, earnings, expenses, transfers, applicable fees, activity history, and safe management controls.
+- Add method, rename, archive/disable, and set default where appropriate.
+- Use stable IDs and duplicate display naming (Name, Name~2, Name~3).
+- No phone/account number field is required.
+- Keep wallet total distinct from Net Total.
+- Transfers between the user's own methods are neither income nor expense.
+- Preserve legacy historical names and references through an explicit mapping layer.
+25.7 People and personal ledger (people.html / transaction.html or equivalent)
+- Normal list shows person name, current balance, and unambiguous direction.
+- Person detail shows chronological Give/Take history, balance calculation, relevant notes, and available actions.
+- Support people who do not have EcO accounts.
+- The app must not state that the user owes a person when the ledger says the person owes the user.
+- WhatsApp reminders are optional, user-initiated, editable, and never auto-sent. Show the message preview and confirmed number before opening WhatsApp. Opening WhatsApp does not prove the message was sent or the debt was repaid.
+- Any sharing of a personal ledger requires explicit scope and permission.
+25.8 Connections and shared transaction proposals
+- Support request/accept/reject flow for EcO-to-EcO connections.
+- Shared transactions are proposed first and become mutually recorded only after required approval.
+- Show the proposal's person, amount, direction, and relevant context before the recipient decides.
+- Pending proposals must be visibly distinct from accepted/finalized records.
+- Prevent duplicates using deterministic IDs/idempotency.
+- Revalidate proposal state before actions.
+- Cross-account updates must use trusted atomic backend operations or an explicitly safe, documented equivalent.
+- Do not expose the user's whole ledger when a single transaction is shared.
+- Preserve correction/void workflows if they are part of the verified product requirements.
+25.9 Notifications
+- Bell/inbox for connection requests, transaction proposals, decisions, and relevant system activity.
+- Newest first; unread state and useful empty/loading/error states.
+- Only show notifications from the last seven days.
+- Notifications older than seven days must be automatically deleted by a trusted scheduled process or configured TTL—not merely hidden in the browser.
+- Notification cleanup must never delete the underlying transaction or proposal.
+- Do not duplicate notifications on retries; use idempotency keys.
+- Do not include sensitive ledger details in notification payloads.
+25.10 Settings (settings.html)
+- Profile and account controls.
+- Dark-only appearance (no theme toggle).
+- Payment methods.
+- Budget mode and budget inputs.
+- Categories/tags.
+- Cash-out fee configuration where applicable.
+- Backup/restore and import report.
+- Privacy/sharing controls.
+- Account/data management and destructive actions.
+Use compact grouped rows. Open detailed controls only after the user chooses a section. Confirm destructive actions. Avoid showing every setting and explanation at once.
+25.11 Public shared-ledger view (share_view.html)
+- Standalone, read-only view with minimal branding.
+- Display only the specifically authorized person's ledger projection.
+- Do not require access to the owner's private collection as a whole.
+- Validate share tokens securely, do not enumerate tokens, and do not reveal owner UIDs or unrelated data.
+- Escape all user-generated text.
+- Provide a clear invalid/expired/revoked link state.
+- Public sharing must be documented as a security-sensitive feature and must not be treated as safe merely because the URL is hard to guess.
+26. Financial Correctness and Regression Tests
+The existing blueprint's calculations and financial meanings are compatibility requirements. Before altering any formula, first identify its current behavior and add tests. Centralize formulas in a domain module.
+26.1 Required wallet regression case
+Use this known case as a mandatory regression test:
+- Opening Cash: ৳1,040
+- Opening bKash: ৳8,000
+- Opening Nagad: ৳0
+- Initial Wallet Total: ৳9,040
+- Initial Net Total: ৳9,040
+- User lends ৳500 to Emon from bKash.
+Expected after the Give transaction:
+- Cash: ৳1,040
+- bKash: ৳7,400
+- Nagad: ৳0
+- Wallet Total: ৳9,040
+- Net Total: ৳8,540
+The difference is intentional: money moved out of the wallet into a receivable. The user must not see “You owe Emon ৳500” for this scenario.
+
+This is a regression case from the existing product; preserve its meaning even as the payment-method data model changes.
+26.2 Core calculation compatibility
+The existing known behavior includes:
+- Transfer cash-out fee: default rate 2% where applicable; fee is based on the stored rate and the historical transaction fields.
+- A fee of 0% must be representable; do not use a fallback pattern that turns valid zero into 2%.
+- Wallet balances derive from opening balances plus earnings minus expenses/recurring expenses and outgoing transfers plus incoming transfer effects, with personal ledger effects accounted for according to the established rules.
+- Net Total differs from Wallet Total by the principal outstanding in personal Give/Take ledger calculations.
+- Person ledger balance is calculated from the net difference of Give and Take under the established direction rules.
+- Shared public view reverses perspective correctly for the counterparty.
+- Budget logic uses the existing budget mode (direct, calculated, none) and current formula semantics. Verify actual source behavior before changing it.
+- Recurring expense logic and historical fee semantics must not be reinterpreted during import.
+Document formulas in DATA_MODEL.md and test edge cases including zero amounts if allowed, empty data, exact-zero balance, negative results where valid, rounding, dates around midnight in Asia/Dhaka, and duplicate method names.
+26.3 Data and migration tests
+Test:
+- valid eco-backup v1 import;
+- malformed JSON;
+- unsupported format version;
+- missing/unknown fields;
+- tagged Firestore values;
+- null versus missing fields;
+- duplicate IDs;
+- repeated import idempotency;
+- redacted share hashes;
+- legacy Cash/bKash/Nagad mapping;
+- bKash present without Nagad;
+- Nagad present without bKash;
+- transaction referencing a method not found in method definitions;
+- import verification count mismatch;
+- interrupted import and safe resume/rollback.
+27. Performance, Security, and Quality Gates
+Before considering a page complete:
+- Avoid unbounded collection reads; use pagination, date filters, or bounded summaries.
+- Prevent stored XSS by safely rendering names, notes, tags, and proposal text.
+- Never trust client-supplied owner IDs, amounts, proposal status, or permissions.
+- Use Firestore Rules as the real authorization boundary; UI checks are not security.
+- Avoid publicly readable private transaction/share documents.
+- Do not use weak random token generation for public share tokens.
+- Make duplicate submissions idempotent.
+- Handle offline, permission-denied, missing-index, network, and malformed-data errors without losing user input.
+- Show the actual failure reason in user-friendly language without exposing secrets.
+- Test in a non-production Firebase project before owner deployment.
+- Ensure no Firebase configuration or privileged secrets are fabricated.
+- Keep logs free of sensitive personal financial information.
+- Ensure keyboard accessibility, visible focus, semantic labels, reduced motion, and sufficient contrast.
+- Confirm the PWA does not expose one user's cached financial data to another user on a shared device.
+28. Google AI Studio Work Plan — Generate the Site Efficiently
+Do not try to generate all pages as one unreviewed code dump. Use this sequence and keep a persistent implementation checklist.
+Phase 1 — Analyze and plan
+1. Read the entire product blueprint and this authoritative override section.
+2. Produce a concise requirements checklist and identify any genuine contradictions or unknowns.
+3. Build a page/component map and data-flow diagram.
+4. Identify domain functions and financial regression tests before writing page UI.
+5. List all Firestore collections, document paths, query shapes, and backend-dependent operations.
+6. Create a file manifest. Do not invent unverified legacy fields; mark uncertain fields for owner/source verification.
+Phase 2 — Foundation
+1. Create design tokens, global CSS, typography, layout shells, navigation, buttons, forms, cards, dialogs, toasts, and detail patterns.
+2. Create Firebase config placeholder and initialization boundary.
+3. Create the repository/data layer and centralized domain utilities.
+4. Create money formatting, date/timezone helpers, validation, payment-method naming/resolution, and financial calculations.
+5. Add unit tests for money/date/calculation/migration utilities before connecting every page.
+6. Create README.md, DATA_MODEL.md, FIREBASE_SETUP.md, and TEST_PLAN.md.
+Phase 3 — Core product
+Implement in this order:
+1. Auth and onboarding/migration.
+2. Dashboard.
+3. Unified Add flow.
+4. Unified List and transaction details.
+5. Wallets/payment methods.
+6. People/personal ledger.
+7. Statistics.
+8. Settings and backup/restore.
+9. Connections/proposals.
+10. Notification inbox and scheduled backend integration boundary.
+11. Public share view.
+12. PWA/offline and responsive polish.
+Phase 4 — Verify each page
+For every page:
+- Check desktop and mobile layout.
+- Check dark-only design tokens.
+- Check normal view is minimal.
+- Check detail-on-demand interaction works.
+- Check empty/loading/error/offline/permission-denied states.
+- Check all controls have real behavior.
+- Check no duplicated calculation or Firestore path logic.
+- Check keyboard and screen-reader basics.
+- Run relevant tests and fix issues before proceeding.
+Phase 5 — Final audit
+- Run all available tests.
+- Compare the required wallet regression case against expected values.
+- Verify backup import/export compatibility.
+- Search for unsafe innerHTML, inline event handlers, hardcoded brand colors, fake sync indicators, hardcoded wallet lists, placeholder success responses, and unbounded reads.
+- Verify that all payment-method selectors are driven by configured methods.
+- Verify new users see Cash only.
+- Verify imported data restores only represented methods.
+- Verify Name~2 duplicate naming and stable IDs.
+- Verify Firebase config remains a placeholder until the owner supplies values.
+- Verify no code claims to have deployed rules, indexes, or backend functions.
+- Deliver a concise setup guide and an honest list of anything that still requires manual Firebase configuration.
+Expected deliverables
+1. Complete runnable multi-page frontend code.
+2. Shared domain/data/UI modules.
+3. Responsive Institutional Emerald UI applied consistently.
+4. README.md with local run instructions.
+5. FIREBASE_SETUP.md with manual configuration/rules/index/security instructions.
+6. DATA_MODEL.md documenting paths, entities, financial formulas, and unresolved legacy semantics.
+7. TEST_PLAN.md plus tests for financial calculations, migration, and critical flows.
+8. A checklist of required owner actions and backend-dependent features.
+9. No fabricated credentials, no fake functionality, and no hidden data-loss behavior.
+Final acceptance criteria
+The project is acceptable only when:
+- It represents the entire EcO product described in this document, not just a dashboard mockup.
+- All pages share a coherent shell and reusable components.
+- The normal view is minimal and details are available on demand.
+- Cash is the only new-user default payment method.
+- Other payment methods are user-defined, uniformly styled, and have no required phone/account number.
+- Duplicate display names follow Name, Name~2, Name~3 with stable record IDs.
+- Legacy import preserves records and restores only represented payment methods.
+- Wallet Total and Net Total pass the known regression case.
+- Firebase integration is clearly separated from manually supplied configuration.
+- Rules, indexes, and console security are documented for manual owner setup, never falsely claimed as deployed.
+- Security-sensitive cross-account and scheduled behavior is not faked in browser-only code.
+- Errors, loading, empty, and offline states are handled.
+- All visible controls do what they claim.
+- The app can be maintained and extended without duplicating business logic.
+Guiding promise: “Record money simply. Understand it clearly. Keep your data safe. Share only what you choose.”

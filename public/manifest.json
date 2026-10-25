@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "EcO Smart Ledger",
+  "short_name": "EcO",
+  "description": "Minimal, dependable personal finance ledger, multi-wallet balance tracker, and peer lending manager.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111317",
+  "theme_color": "#111317",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,315 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-surface: #111317;
+    --surface-lowest: #0c0e12;
+    --surface-low: #1a1c20;
+    --surface-mid: #1e2024;
+    --surface-high: #282a2e;
+    --surface-highest: #333539;
+    --primary: #73e3b4;
+    --primary-container: #55c79a;
+    --on-primary: #003826;
+    --error: #ffb4ab;
+    --secondary: #bec7d5;
+    --on-surface: #e2e2e8;
+    --on-surface-variant: #bccac1;
+    --outline-variant: #3d4943;
+    --outline: #87948c;
+
+    /* Theme brand palette variables */
+    --brand-accent: #73e3b4;
+    --brand-bg: #55c79a;
+    --brand-on: #003826;
+    --brand-border: #73e3b4;
+  }
+
+  /* Blue Palette */
+  [data-palette="blue"],
+  .palette-blue {
+    --brand-accent: #60a5fa;
+    --brand-bg: #3b82f6;
+    --brand-on: #ffffff;
+    --brand-border: #60a5fa;
+  }
+
+  /* Orange Palette */
+  [data-palette="orange"],
+  .palette-orange {
+    --brand-accent: #fb923c;
+    --brand-bg: #f97316;
+    --brand-on: #ffffff;
+    --brand-border: #fb923c;
+  }
+
+  html.light,
+  [data-theme="light"] {
+    --bg-surface: #f4f6f8;
+    --surface-lowest: #ffffff;
+    --surface-low: #ffffff;
+    --surface-mid: #f0f2f5;
+    --surface-high: #e4e7ec;
+    --surface-highest: #d0d5dd;
+    --primary: #059669;
+    --primary-container: #10b981;
+    --on-primary: #ffffff;
+    --error: #dc2626;
+    --secondary: #475467;
+    --on-surface: #101828;
+    --on-surface-variant: #344054;
+    --outline-variant: #d0d5dd;
+    --outline: #667085;
+  }
+
+  body {
+    background-color: var(--bg-surface);
+    color: var(--on-surface);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  /* Monospace tabular figures rule */
+  .font-mono,
+  .tabular-nums {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* =========================================================================
+   PALETTE OVERRIDES (Green default, Blue, Orange)
+   Notice: Income / Profit stays Green; Expense / Loss stays Red
+   ========================================================================= */
+
+/* Financial indicators must ALWAYS stay Green and Red */
+.financial-income,
+.text-financial-income {
+  color: #10b981 !important;
+}
+.financial-expense,
+.text-financial-expense {
+  color: #ef4444 !important;
+}
+
+/* Blue Palette UI Overrides */
+[data-palette="blue"] [class*="bg-[#55C79A]"],
+[data-palette="blue"] [class*="bg-[#55c79a]"] {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+[data-palette="blue"] [class*="hover:bg-[#73E3B4]"]:hover,
+[data-palette="blue"] [class*="hover:bg-[#55C79A]"]:hover {
+  background-color: #2563eb !important;
+}
+[data-palette="blue"] [class*="text-[#73E3B4]"]:not(.financial-income):not([data-financial="income"]) {
+  color: #3b82f6 !important;
+}
+[data-palette="blue"] [class*="border-[#73E3B4]"] {
+  border-color: #3b82f6 !important;
+}
+[data-palette="blue"] [class*="hover:text-[#73E3B4]"]:hover {
+  color: #60a5fa !important;
+}
+
+/* Orange Palette UI Overrides */
+[data-palette="orange"] [class*="bg-[#55C79A]"],
+[data-palette="orange"] [class*="bg-[#55c79a]"] {
+  background-color: #f97316 !important;
+  color: #ffffff !important;
+}
+[data-palette="orange"] [class*="hover:bg-[#73E3B4]"]:hover,
+[data-palette="orange"] [class*="hover:bg-[#55C79A]"]:hover {
+  background-color: #ea580c !important;
+}
+[data-palette="orange"] [class*="text-[#73E3B4]"]:not(.financial-income):not([data-financial="income"]) {
+  color: #f97316 !important;
+}
+[data-palette="orange"] [class*="border-[#73E3B4]"] {
+  border-color: #f97316 !important;
+}
+[data-palette="orange"] [class*="hover:text-[#73E3B4]"]:hover {
+  color: #fb923c !important;
+}
+
+/* =========================================================================
+   LIGHT THEME COMPLETE ELEMENT MAPPINGS
+   Uses substring attribute selectors for 100% reliable matching across all cards, modals & text
+   ========================================================================= */
+html.light,
+[data-theme="light"],
+html.light body,
+[data-theme="light"] body {
+  background-color: #f4f6f8 !important;
+  color: #101828 !important;
+}
+
+/* Backgrounds */
+html.light [class*="bg-[#111317]"],
+[data-theme="light"] [class*="bg-[#111317]"] {
+  background-color: #f4f6f8 !important;
+}
+
+html.light [class*="bg-[#1A1C20]"],
+[data-theme="light"] [class*="bg-[#1A1C20]"] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(16, 24, 40, 0.05);
+}
+
+html.light [class*="bg-[#0C0E12]"],
+[data-theme="light"] [class*="bg-[#0C0E12]"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light [class*="bg-[#1E2024]"],
+[data-theme="light"] [class*="bg-[#1E2024]"] {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light [class*="bg-[#282A2E]"],
+[data-theme="light"] [class*="bg-[#282A2E]"] {
+  background-color: #e2e8f0 !important;
+}
+
+/* Text colors in Light Theme */
+html.light [class*="text-[#E2E2E8]"],
+[data-theme="light"] [class*="text-[#E2E2E8]"] {
+  color: #0f172a !important;
+}
+
+html.light [class*="text-[#BCCAC1]"],
+[data-theme="light"] [class*="text-[#BCCAC1]"] {
+  color: #334155 !important;
+}
+
+html.light [class*="text-[#87948C]"],
+[data-theme="light"] [class*="text-[#87948C]"] {
+  color: #64748b !important;
+}
+
+html.light [class*="text-[#BEC7D5]"],
+[data-theme="light"] [class*="text-[#BEC7D5]"] {
+  color: #475569 !important;
+}
+
+/* Borders in Light Theme */
+html.light [class*="border-[#3D4943]"],
+[data-theme="light"] [class*="border-[#3D4943]"] {
+  border-color: #e2e8f0 !important;
+}
+
+/* Header & Sidebar in Light Theme */
+html.light header,
+[data-theme="light"] header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light aside,
+[data-theme="light"] aside {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light nav,
+[data-theme="light"] nav {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Form Inputs in Light Theme */
+html.light input,
+html.light select,
+html.light textarea,
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder,
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Hover backgrounds in Light Theme */
+html.light [class*="hover:bg-[#1A1C20]"]:hover,
+[data-theme="light"] [class*="hover:bg-[#1A1C20]"]:hover,
+html.light [class*="hover:bg-[#1E2024]"]:hover,
+[data-theme="light"] [class*="hover:bg-[#1E2024]"]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* =========================================================================
+   STANDARDIZED BUTTON DIMENSION TOKENS
+   ========================================================================= */
+.btn-sm {
+  height: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 12px;
+  padding-right: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.btn-md {
+  height: 38px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 16px;
+  padding-right: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface-lowest);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-high);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline-variant);
+}
+
+/* Mobile safe areas */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}

@@ -1,0 +1,651 @@
+# Google AI Studio Master Prompt — EcO Smart Ledger Visual Redesign
+
+## 1. Your Role
+
+Act as a Principal UI/UX Designer, Senior Frontend Engineer, Design Systems Architect, and Quality Assurance Engineer.
+
+You are working on my existing web application, **EcO Smart Ledger**, a personal finance tracking Progressive Web App (PWA) designed primarily for users in Bangladesh.
+
+Your task is to **redesign the existing application's visual presentation and improve its usability directly in the current project**.
+
+This is an existing application, not a new project. You must inspect the current codebase, understand its architecture and workflows, and implement the redesign while preserving all working functionality.
+
+Do not merely generate a design proposal, static mockup, or isolated demo. Update the actual application code.
+
+## 2. Primary Objective
+
+Transform EcO into a premium, coherent, modern, dark-mode fintech application inspired by the provided visual references and the design patterns described below.
+
+The new interface should feel:
+
+- Minimal, clean, and professional.
+- Calm and comfortable for everyday financial tracking.
+- Information-dense only when the task genuinely requires it.
+- Visually consistent across all pages.
+- Optimized for mobile-first daily use while remaining excellent on desktop.
+- Easy to understand without unnecessary descriptions, badges, decorative graphics, or secondary information.
+- Trustworthy, especially when displaying balances, expenses, income, budgets, and personal lending records.
+
+**The fundamental principle is: show the essential information first; reveal detailed information only when the user requests it.**
+
+Do not sacrifice usability or financial clarity to make the interface visually impressive.
+
+---
+
+## 3. Non-Negotiable Preservation Rules
+
+Before modifying any code, inspect the entire existing project and identify its framework, shared components, routes, styles, data structures, and current behavior.
+
+Preserve the following:
+
+1. The existing EcO application purpose and all established features.
+2. The current color palette and semantic color assignments.
+3. The existing financial calculations, formulas, and transaction semantics.
+4. Firebase Authentication and Firestore integration.
+5. Existing data persistence, validation, and loading behavior.
+6. Existing navigation destinations and page responsibilities.
+7. Existing payment-method management and wallet behavior.
+8. Existing personal lending and borrowing workflows.
+9. Existing budget calculations and statistics.
+10. Existing data import, export, and backup compatibility.
+11. Existing user connections, shared ledger, feedback, and notification functionality wherever implemented.
+12. Existing responsive behavior and PWA functionality.
+
+Do not replace functional code with static HTML or fake interactions.
+
+Do not rename database collections, change document structures, alter financial formulas, or migrate data merely to accommodate the redesign.
+
+Do not introduce fake transactions, sample financial values, invented statistics, or decorative charts unsupported by actual data.
+
+If a feature appears incomplete or broken, document the finding and make only the changes necessary to fulfill the existing intended behavior.
+
+If an implementation detail is unclear, inspect the source code before making assumptions.
+
+## 4. Visual Design Direction
+
+Use a **minimal, premium, dark-first fintech dashboard** with a restrained, structured, card-based layout.
+
+Use the provided design references for visual direction, especially their:
+
+- Layered charcoal surfaces.
+- Restrained emerald accents.
+- Clear typography hierarchy.
+- Consistent alignment and spacing.
+- Compact but readable cards.
+- Simple iconography.
+- Subtle borders and interaction feedback.
+- Strong distinction between primary information and secondary details.
+
+### 4.1 Preserve the existing EcO color system
+
+Do not replace the established EcO palette with a different palette.
+
+The existing institutional emerald concept may be used to guide surface hierarchy and visual treatment, but it must be adapted to the application's actual current theme tokens.
+
+Before implementation, inspect the current styles and identify the real values for:
+
+- Primary accent.
+- Page background.
+- Card surfaces.
+- Nested surfaces.
+- Primary text.
+- Secondary text.
+- Borders and dividers.
+- Positive financial values.
+- Negative financial values.
+- Transfer indicators.
+- Pending or neutral statuses.
+- Destructive actions.
+
+Reuse existing tokens wherever possible. If the current project already uses the institutional emerald palette, preserve those exact values.
+
+If the project has a different established palette, keep that palette instead of silently replacing it.
+
+Payment methods must use a consistent neutral visual treatment. Do not assign special brand colors to bKash, Nagad, City Bank, or other payment methods. Payment methods should remain distinguishable through their names and, where helpful, neutral icons.
+
+### 4.2 Surfaces and cards
+
+Use layered dark surfaces rather than pure black and pure white.
+
+Recommended visual characteristics:
+
+- Page canvas: darkest neutral surface.
+- Primary cards: slightly lighter charcoal.
+- Nested card sections: subtly differentiated neutral surfaces.
+- Borders: thin, low-contrast outlines.
+- Hover states: modest border or surface brightness changes.
+- Shadows: restrained and used only when they improve hierarchy.
+- Corner radii: consistent, relatively modest rounding.
+- Spacing: based on a reusable scale.
+
+Avoid excessive gradients, glassmorphism, glowing effects, decorative patterns, and oversized rounded containers.
+
+Cards should feel like practical containers for financial information, not promotional banners.
+
+### 4.3 Typography
+
+Use the typography already established in the project where practical. Otherwise, follow the reference's typography direction:
+
+- Inter for headings, labels, body text, and interface copy.
+- JetBrains Mono for financial amounts, transaction IDs, and precise numerical data.
+
+Use clear and predictable text sizes.
+
+Do not make every label uppercase, bold, or visually prominent.
+
+Financial amounts should be easy to compare at a glance.
+
+Use appropriate Bengali typography, such as Hind Siliguri, wherever Bangla text appears.
+
+### 4.4 Icons
+
+Use a consistent icon library already available in the project.
+
+If the project uses Material Symbols Outlined or Font Awesome, retain and use that existing library consistently.
+
+Do not add a new icon library unnecessarily.
+
+Replace placeholder symbols and inconsistent icons with meaningful, accessible icons.
+
+---
+
+## 5. The Most Important UX Rule: Minimal Default Views
+
+Apply this principle across the entire application: dashboard, expenses, statistics, wallets, transactions, settings, dialogs, menus, and empty states.
+
+**Everyday views should contain only the information necessary to make the next decision.**
+
+Do not fill cards with explanatory paragraphs, redundant labels, decorative badges, secondary metrics, or metadata that users rarely need.
+
+### Default card behavior
+
+A normal card should generally contain:
+
+1. A concise title or meaningful identifier.
+2. The primary value or status.
+3. At most one essential supporting detail, if it genuinely helps.
+4. A subtle indication that more information is available, when applicable.
+
+Examples:
+
+- A wallet card shows the payment-method name and current balance.
+- A category card shows its name, spending amount, and a useful visual comparison if needed.
+- A transaction row shows its description, amount, and date.
+- A budget card shows the remaining amount and a compact progress indicator.
+- A lending record shows the person's name, outstanding amount, and relevant age or due milestone.
+
+Do not force every card to display the same number of fields. Choose content according to the task.
+
+### Progressive disclosure
+
+Provide detailed information through one of these patterns where appropriate:
+
+- Clicking a card.
+- Clicking a small information icon.
+- Clicking a subtle “Details” action.
+- Expanding a row.
+- Opening a dedicated detail page or bottom sheet.
+
+The detailed view may include notes, transaction history, formulas, fee calculations, IDs, timestamps, audit metadata, supporting explanations, and relevant actions.
+
+Do not hide essential warnings, payment status, or information required to prevent a financial mistake.
+
+For interactive cards, make the click target and available actions clear. Avoid making an entire card clickable when it contains several independent buttons that would conflict with the card action.
+
+---
+
+## 6. Required Visual Patterns
+
+Use the following patterns where they naturally fit the existing information architecture.
+
+### 6.1 Financial summary cards
+
+Use compact summary cards for essential financial metrics.
+
+Examples include:
+
+- Net balance.
+- Wallet total.
+- Total spending.
+- Total income.
+- Remaining budget.
+- Receivables.
+- Payables.
+
+Display only the metrics relevant to the current page and task.
+
+Do not duplicate the same financial value in multiple cards without a clear reason.
+
+Use consistent alignment, compact labels, readable values, and restrained semantic colors.
+
+On mobile, allow cards to form a compact two-column grid when the content remains readable. Use a single column when necessary.
+
+Do not force six or eight KPI cards into a crowded first-screen layout. Prioritize the most useful information and place secondary metrics further down the page or inside details.
+
+### 6.2 Category-specific highlight cards
+
+Use category highlights to help users identify where their money goes.
+
+Display the category name, spending amount, and an optional compact proportional indicator.
+
+Use actual category data.
+
+Avoid giving every category a different bright color. Reuse the existing semantic palette and use neutral variations where visual distinction is necessary.
+
+Do not turn every category into a large dashboard card. Use a compact ranked list when it communicates the same information more efficiently.
+
+### 6.3 Task sections and empty states
+
+Organize pages into clear sections based on what the user wants to accomplish.
+
+Examples:
+
+- Recent activity.
+- Wallet balances.
+- Outstanding lending.
+- Budget status.
+- Spending breakdown.
+- Account settings.
+
+Empty states should be simple, helpful, and actionable.
+
+Examples:
+
+- No transactions: “No transactions yet” with an appropriate Add Entry action.
+- No lending records: “All settled up! 🎉” when the underlying data confirms there are no outstanding balances.
+- No budget configured: a short explanation and a direct action to configure one.
+- No results: a clear message and an option to clear the active filters.
+
+Do not display empty-state illustrations, lengthy explanations, or multiple buttons unless they provide genuine value.
+
+Never interpret missing or failed data as a confirmed zero balance. Show an appropriate loading, error, or unavailable state instead.
+
+### 6.4 Recent transaction lists
+
+Use compact transaction rows with a predictable structure:
+
+- A small meaningful icon.
+- Transaction title or description.
+- Essential payment method or category when useful.
+- Amount.
+- Date or time, where relevant.
+
+Keep the default row short and scannable.
+
+Show detailed metadata after the user opens the row or its detail action.
+
+Preserve the application's existing transaction types and calculation rules. Do not change how expenses, income, transfers, lending, or borrowing affect balances.
+
+Use pagination or the project's existing efficient loading mechanism for long lists. Do not unnecessarily load or render every historical transaction just to support a visual redesign.
+
+### 6.5 Icon-led feature grids
+
+Use compact icon-led grids for related actions or settings when they improve discoverability.
+
+Examples might include existing actions for adding expenses, recording income, transferring money, or accessing account-related settings.
+
+Only show actions that the current application actually supports.
+
+Use a consistent icon size, title, spacing, and interaction style.
+
+Avoid turning every navigation link into a decorative tile.
+
+### 6.6 Grouped settings sections
+
+Organize settings into meaningful groups while preserving all current settings and their behavior.
+
+For example, if these categories already exist in the application:
+
+- Profile and preferences.
+- Appearance.
+- Budget configuration.
+- Payment methods and charges.
+- Categories and transaction options.
+- Data backup and restore.
+- Privacy and sharing.
+- Account and destructive actions.
+
+Use clear section headings, compact setting rows, aligned controls, and short supporting descriptions only where needed.
+
+Keep dangerous operations visually separated from ordinary preferences. Deleting or resetting data must retain appropriate confirmation steps.
+
+Do not remove a setting simply because it is rarely used.
+
+### 6.7 Charts and complex information
+
+Charts should appear only when they provide meaningful insight from real data.
+
+Keep chart headings concise and legends compact.
+
+Provide access to exact values through tooltips, labels, or detail views rather than displaying every possible number simultaneously.
+
+Make charts responsive and readable on mobile.
+
+Preserve the existing Statistics page's six sections and their established metrics and visualizations. Improve their arrangement and information hierarchy rather than removing features or inventing new metrics.
+
+---
+
+## 7. Page-by-Page Redesign Requirements
+
+Inspect the actual implementation before changing these pages.
+
+### Dashboard
+
+Prioritize the most useful financial information, such as:
+
+- The main balance summary.
+- Current budget status.
+- A compact overview of outstanding receivables and payables.
+- Recent transactions.
+- Relevant shortcuts for existing actions.
+
+Use an intentional visual hierarchy rather than making every section equally prominent.
+
+Avoid excessive metrics in the first viewport.
+
+Outstanding lending and borrowing must remain financially accurate and clearly distinguish between money the user expects to receive and money the user needs to repay.
+
+When all relevant balances are settled, show a friendly, concise success state instead of an empty or alarming card.
+
+### Expenses and transaction list
+
+Prioritize:
+
+- A clear page title.
+- An understandable date or month selector.
+- Search and useful filters.
+- Compact transaction rows.
+- An obvious way to add a record.
+- Accessible transaction details and editing actions.
+
+Avoid excessive summary ribbons and redundant filters.
+
+Keep the list scrollable and ensure filters work correctly with real data.
+
+### Statistics
+
+Preserve the six existing sections:
+
+1. Overview.
+2. Categories.
+3. Trend.
+4. Heatmap.
+5. Budget.
+6. Insights.
+
+Retain the established metrics, charts, rankings, and budget information that are supported by the current implementation.
+
+Improve section navigation, chart sizing, spacing, labels, legends, and responsive layout.
+
+Group related information together. Place the most important figures before detailed charts and lists.
+
+Use section navigation that is compact on desktop and easy to access on mobile.
+
+Do not display every KPI and chart at once if that creates a cluttered page. Use the existing section structure to keep each view focused.
+
+### Wallets
+
+Display payment methods consistently, with a simple name, balance, and relevant action.
+
+Do not use separate brand colors for individual payment methods.
+
+Preserve the distinction between wallet total and the application's net balance.
+
+Make opening balances, transfers, income, fees, and wallet activity accessible without permanently crowding the main wallet view.
+
+### People and personal ledger
+
+Make the direction and status of outstanding money unmistakable.
+
+Keep names, outstanding amounts, and the relevant next action visible.
+
+Put transaction history, detailed calculations, dates, and additional metadata into a focused detail view.
+
+Preserve the existing Give and Take semantics and the correct distinction between receivables and payables.
+
+### Settings
+
+Apply grouped settings sections and consistent form controls.
+
+Ensure dropdowns, inputs, toggles, dialogs, validation errors, confirmation steps, and save feedback use the same design language as the rest of the application.
+
+### Shared views and other existing pages
+
+Apply the same typography, spacing, surface hierarchy, and compact information design to public or shared ledger views, feedback dialogs, notification interfaces, and any other existing pages.
+
+Do not allow secondary pages to retain an outdated visual style.
+
+---
+
+## 8. Mobile Navigation and Floating Action Button
+
+### 8.1 Bottom navigation
+
+Implement or refine the fixed bottom navigation only where it fits the existing application architecture.
+
+On mobile, the navigation should:
+
+- Provide quick access to the application's most important destinations.
+- Clearly indicate the active page.
+- Use consistent icons and short labels.
+- Respect `env(safe-area-inset-bottom)`.
+- Remain accessible with touch, keyboard, and screen readers where applicable.
+- Avoid covering the last transaction, form field, dialog action, or other important content.
+- Remain visually restrained and consistent with the existing palette.
+
+Add sufficient bottom padding to scrollable content so the final item can scroll fully above the navigation.
+
+Account for keyboard visibility, small screens, and browser viewport changes.
+
+On desktop, retain the appropriate existing desktop navigation. Do not show a mobile bottom bar unnecessarily.
+
+Do not create duplicate navigation systems that compete with one another.
+
+### 8.2 Floating primary action button
+
+Use a floating action button only when it provides a meaningful and frequently used action on that screen.
+
+For example, an Add Entry action may be appropriate on the dashboard or transaction list if that matches the existing workflow.
+
+The button must:
+
+- Have an understandable purpose.
+- Match the established primary color.
+- Avoid overlapping the bottom navigation.
+- Avoid covering transactions, forms, or other essential controls.
+- Respect mobile safe areas.
+- Remain reachable on small screens.
+- Disappear on screens where it adds no meaningful value.
+
+If the bottom navigation already contains a central Add action, do not add a second floating button that duplicates it.
+
+### 8.3 Responsive layout
+
+Desktop, tablet, and mobile should feel intentionally designed for their respective screen sizes, not simply scaled versions of one layout.
+
+Use sensible maximum widths, responsive grids, consistent page gutters, and natural scrolling.
+
+Prevent horizontal overflow, clipped labels, overlapping actions, and hidden content.
+
+---
+
+## 9. Interactions, Dialogs, and Feedback
+
+Make interaction patterns consistent throughout the application.
+
+- Buttons need clear hover, focus, pressed, loading, disabled, and error states as appropriate.
+- Inputs need visible labels, validation feedback, and accessible focus indicators.
+- Dialogs must fit small screens and close predictably.
+- Dropdowns must not be clipped by cards or viewport boundaries.
+- Toasts should provide concise confirmation or error messages.
+- Long lists should scroll naturally.
+- Expandable rows should communicate whether they are open or closed.
+- Destructive operations must use appropriate confirmation.
+- Important actions must not silently fail.
+
+Avoid confirmation modals for harmless actions that do not need them, but do not remove confirmation from destructive or financially consequential actions.
+
+Do not replace real save, update, delete, filter, export, or navigation behavior with a toast that merely pretends the action succeeded.
+
+Keep existing keyboard accessibility and add it where the redesign exposes new interactions.
+
+---
+
+## 10. Technical Implementation Rules
+
+Use the existing project stack and conventions.
+
+Do not introduce React, a new build system, a routing framework, or a new state-management library if the existing project does not use them and they are unnecessary.
+
+Prefer:
+
+- Reusable existing components.
+- Shared CSS classes and design tokens.
+- Small, well-defined helper functions.
+- Consistent component patterns.
+- Semantic HTML.
+- Accessible interactive elements.
+- Minimal additional dependencies.
+
+Create or refine reusable design tokens for:
+
+- Colors.
+- Typography.
+- Spacing.
+- Border radii.
+- Shadows.
+- Borders.
+- Responsive breakpoints.
+- Interactive states.
+
+Avoid duplicated CSS and repeated page-specific implementations of the same component.
+
+Do not introduce a visual component that requires unsupported data or an API that does not exist.
+
+### Firebase boundary
+
+I will manage Firebase API configuration, security rules, indexes, and Firebase-side security settings manually.
+
+Your responsibility is to generate and maintain the application code that uses the existing Firebase integration correctly.
+
+Do not invent Firebase credentials, overwrite my configuration, or change database rules and indexes.
+
+Do not weaken security rules to make a new UI feature work.
+
+If the redesign exposes a missing backend capability or an integration requirement, explain it clearly rather than simulating a successful operation.
+
+Preserve authentication checks, data ownership, validation, and the application's existing persistence model.
+
+---
+
+## 11. Accessibility and Localization
+
+Maintain accessible contrast, visible focus states, meaningful button labels, and appropriate semantic structure.
+
+Do not rely on color alone to communicate financial direction or transaction status.
+
+Use touch targets large enough for comfortable mobile use.
+
+Ensure dialogs manage keyboard focus appropriately.
+
+Preserve Bengali and English text support. Use the correct Bengali font and spelling wherever Bangla labels appear.
+
+Format money consistently using the application's established Bangladeshi currency conventions. Preserve its actual financial values and precision.
+
+Keep all user-facing text concise and predictable.
+
+---
+
+## 12. Implementation Workflow
+
+Work through the redesign systematically.
+
+### Phase 1 — Inspect the project
+
+- Inspect all existing pages, shared styles, components, scripts, and navigation.
+- Identify the current color palette and responsive breakpoints.
+- Identify duplicated components and inconsistent layouts.
+- Map existing page functionality and interactions.
+- Identify which parts can be redesigned without changing business logic.
+- Report any important uncertainty before making risky changes.
+
+### Phase 2 — Establish the design system
+
+- Create or refine reusable design tokens.
+- Standardize cards, page headers, buttons, inputs, section headings, transaction rows, dialogs, and empty states.
+- Define responsive behavior for the desktop, tablet, and mobile shells.
+- Preserve the current palette and semantic financial colors.
+
+### Phase 3 — Implement the redesign
+
+Update the existing pages in a consistent order.
+
+Start with shared layout and reusable components, then update each page to use those components.
+
+Keep functional changes separate from purely visual changes whenever possible.
+
+Do not stop after redesigning the dashboard. The entire existing application must be visually consistent.
+
+### Phase 4 — Verify the result
+
+Inspect every modified page and test the affected interactions.
+
+Verify:
+
+- Navigation and routes.
+- Add, edit, delete, and save operations.
+- Search and filters.
+- Financial calculations and balance updates.
+- Budget and statistics behavior.
+- Wallet and payment-method handling.
+- Lending and borrowing records.
+- Data loading and error states.
+- Settings and dialogs.
+- Existing import and export behavior.
+- Mobile bottom navigation and safe areas.
+- Floating action button placement.
+- Responsive layout at small, medium, and large widths.
+- Keyboard navigation and focus visibility.
+- No horizontal overflow or covered content.
+- No broken interactions or console errors introduced by the changes.
+
+Do not claim that an operation has been tested unless you actually tested it.
+
+Fix regressions caused by the redesign before finishing.
+
+---
+
+## 13. Definition of Done
+
+The redesign is complete only when:
+
+1. All existing pages use a coherent visual design system.
+2. The existing color palette and financial semantics remain intact.
+3. Normal cards display only their essential information.
+4. Detailed information remains accessible through appropriate interactions.
+5. The dashboard is useful without being crowded.
+6. Statistics retain their existing sections and meaningful content.
+7. Wallet and transaction lists remain readable and functional.
+8. Settings, forms, dialogs, and empty states look consistent.
+9. Mobile navigation is accessible and does not cover content.
+10. Floating actions appear only where appropriate.
+11. The application remains responsive across mobile, tablet, and desktop.
+12. Existing financial calculations and Firebase persistence remain unchanged.
+13. No fake statistics, placeholder functionality, or invented financial records have been introduced.
+14. The actual project code has been updated, not merely described.
+
+## 14. Final Report
+
+After implementation, provide a concise but complete report containing:
+
+- Pages updated.
+- Shared components and design tokens changed.
+- Major visual improvements.
+- UX problems fixed.
+- Functional behavior preserved.
+- Responsive and accessibility checks completed.
+- Tests actually performed and their results.
+- Any remaining issues or limitations.
+- Any manual Firebase configuration or integration work still required.
+
+**Final instruction:** Implement a polished, restrained, premium redesign of the existing EcO Smart Ledger. Preserve its established purpose, architecture, data, calculations, features, and color palette. Prioritize clarity over decoration, essential information over clutter, and real functionality over visual imitation. Do not stop at planning; make the changes in the current project and verify them.

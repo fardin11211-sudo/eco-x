@@ -1,0 +1,172 @@
+{
+  "format": "eco-backup",
+  "formatVersion": 1,
+  "exportedAt": "2026-10-25T10:00:00.000Z",
+  "app": {
+    "name": "EcO",
+    "purpose": "Personal Finance & Expense Tracker for Bangladesh"
+  },
+  "timestampEncoding": "firestore-v1",
+  "data": {
+    "settings": [
+      {
+        "id": "main",
+        "fields": {
+          "theme": "dark",
+          "colorPalette": "green",
+          "budgetMode": "calculated",
+          "directDailyBudget": 500,
+          "monthlyIncome": 35000,
+          "monthlyFixed": 6500,
+          "monthlySavings": 5000,
+          "monthlyEmergency": 3000,
+          "bufferPct": 10,
+          "cashoutChargeRate": 2,
+          "categories": [
+            "Food",
+            "Transport",
+            "Groceries",
+            "Utilities",
+            "Family",
+            "Entertainment",
+            "Health",
+            "Tech",
+            "Other"
+          ],
+          "tags": ["Personal", "Work", "Office", "Loan", "Project"]
+        }
+      }
+    ],
+    "openingBalances": [
+      {
+        "id": "current",
+        "fields": {
+          "cash": 2500,
+          "bkash": 7500,
+          "nagad": 1200,
+          "date": "2026-10-01"
+        }
+      }
+    ],
+    "people": [
+      {
+        "id": "person_emon",
+        "fields": {
+          "name": "Emon Ahmed",
+          "phone": "+8801712345678",
+          "createdAt": {
+            "__type": "timestamp",
+            "seconds": 1760000000,
+            "nanoseconds": 0
+          }
+        }
+      },
+      {
+        "id": "person_tanvir",
+        "fields": {
+          "name": "Tanvir Hasan",
+          "phone": "+8801812345678",
+          "createdAt": {
+            "__type": "timestamp",
+            "seconds": 1760100000,
+            "nanoseconds": 0
+          }
+        }
+      }
+    ],
+    "expenses": [
+      {
+        "id": "exp_sample_1",
+        "fields": {
+          "reason": "Groceries & Vegetables",
+          "category": "Food",
+          "description": "Weekly bazaar at local market",
+          "amount": 1450,
+          "type": "regular",
+          "payMethodId": "cash",
+          "date": "2026-10-20"
+        }
+      },
+      {
+        "id": "exp_sample_2",
+        "fields": {
+          "reason": "Internet Fiber Bill",
+          "category": "Utilities",
+          "description": "Monthly broadband subscription",
+          "amount": 1000,
+          "type": "fixed",
+          "payMethodId": "bkash",
+          "date": "2026-10-05"
+        }
+      }
+    ],
+    "recurringExpenses": [
+      {
+        "id": "rec_sample_1",
+        "fields": {
+          "reason": "Mobile Data Pack",
+          "category": "Utilities",
+          "amount": 498,
+          "days": 30,
+          "startDate": "2026-10-01",
+          "endDate": "2026-10-30",
+          "payMethodId": "bkash"
+        }
+      }
+    ],
+    "earnings": [
+      {
+        "id": "earn_sample_1",
+        "fields": {
+          "source": "Salary",
+          "description": "Monthly software engineer salary",
+          "amount": 35000,
+          "payMethodId": "cash",
+          "date": "2026-10-01"
+        }
+      }
+    ],
+    "transfers": [
+      {
+        "id": "transfer_sample_1",
+        "fields": {
+          "fromMethodId": "cash",
+          "toMethodId": "bkash",
+          "requestedAmount": 3000,
+          "chargeApplied": false,
+          "chargeAmount": 0,
+          "sourceDeducted": 3000,
+          "note": "Cash-in at bKash Agent",
+          "date": "2026-10-03"
+        }
+      }
+    ],
+    "transactions": [
+      {
+        "id": "loan_sample_1",
+        "fields": {
+          "personId": "person_emon",
+          "type": "give",
+          "amount": 1500,
+          "payMethodId": "bkash",
+          "tag": "Personal",
+          "description": "Lunch split emergency loan",
+          "date": "2026-10-15"
+        }
+      }
+    ]
+  },
+  "integrity": {
+    "complete": true,
+    "counts": {
+      "settings": 1,
+      "openingBalances": 1,
+      "people": 2,
+      "expenses": 2,
+      "recurringExpenses": 1,
+      "earnings": 1,
+      "transfers": 1,
+      "transactions": 1
+    }
+  }
+}
